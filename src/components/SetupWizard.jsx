@@ -74,6 +74,25 @@ function TextField({ field, value, onChange, invalid }) {
   );
 }
 
+function SelectField({ field, value, onChange, invalid }) {
+  return (
+    <div className={s.field}>
+      <label className={s.fieldLabel}>{field.label}</label>
+      <select
+        className={`${s.input} ${invalid ? s.inputInvalid : ''}`}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="" disabled>— choose —</option>
+        {(field.options || []).map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      {field.hint && <span className={s.fieldHint}>{field.hint}</span>}
+    </div>
+  );
+}
+
 function renderField(field, values, setValue, showInvalid) {
   const value = values[field.key] === undefined ? '' : values[field.key];
   const onChange = (v) => setValue(field.key, v);
@@ -81,6 +100,9 @@ function renderField(field, values, setValue, showInvalid) {
     return <PemField key={field.key} field={field} value={value} onChange={onChange} />;
   }
   const invalid = showInvalid && !field.advanced && !(typeof value === 'string' && value.trim().length);
+  if (field.type === 'select') {
+    return <SelectField key={field.key} field={field} value={value} onChange={onChange} invalid={invalid} />;
+  }
   return <TextField key={field.key} field={field} value={value} onChange={onChange} invalid={invalid} />;
 }
 

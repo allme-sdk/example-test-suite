@@ -36,6 +36,10 @@ const ADVANCED = [
   }
 ];
 
+// Flow runs drive the company party via a data client + the service key — there is
+// no OAuth consent redirect — so the flow family's advanced block is API-URL only.
+const FLOW_ADVANCED = [ADVANCED[0]];
+
 const PHONE_PREREQ =
   'A physical phone with the allme app, signed in as the demo person. It reaches the deployed platform naturally.';
 
@@ -227,6 +231,52 @@ export const SCENARIOS = [
         hint: 'The fake local login is one field — no password, no backend user store. This name is a frontend setup value only.'
       },
       ...ADVANCED
+    ]
+  },
+  // ── Flow family (#484) ────────────────────────────────────────────────
+  // A flow run needs no OAuth consent redirect (it drives the company party
+  // via a data client + the service key), so its advanced block is API-URL only.
+  {
+    id: 'flow:run',
+    kind: 'runnable',
+    title: 'Run a contract flow',
+    summary:
+      'Trigger a contract flow and drive the company party through it: type-checked step filling (one deliberate reject → accept), a person turn on the phone, then the decrypted answers and — for the contract fixture — the signed document.',
+    readmeChapter: 'Run a contract flow',
+    runButton: 'Trigger the flow run',
+    checklist: [
+      'In the allus portal, register a DATA CLIENT (client_credentials) for the service — its whitelist auto-grants /api/company-data/*.',
+      'Create (or reuse) the SERVICE and download its private key (PEM) — the flow answers + document are decrypted with it.',
+      'Import the chosen fixture zip (service settings → Flows → Import) from sdks/php/examples/flow/fixtures/, then PUBLISH the imported flow.',
+      'Copy the PUBLISHED flow id and the target CONNECTION id below, pick the SERVICE PEM and its passphrase, and enter the data-client id/secret.',
+      'Pick the same fixture below that you imported — the backend uses it to know the validation-demo step and whether to download a document.'
+    ],
+    prerequisites: [
+      'A physical phone with the allme app, signed in as the connected demo person — the person answers their turn (and, for the contract fixture, signs the document) on the phone.'
+    ],
+    fields: [
+      { key: 'clientId', label: 'Service data client id', type: 'text' },
+      { key: 'clientSecret', label: 'Service data client secret', type: 'secret' },
+      {
+        key: 'servicePrivateKeyPem',
+        label: 'Service private key (PEM)',
+        type: 'pem',
+        hint: 'The flow answers + document copy are service-key-encrypted; this key decrypts them. Read into localStorage; on Save written under .runtime/config/keys (0600) and referenced by path in the SDK config file.'
+      },
+      { key: 'keyPassphrase', label: 'Service key passphrase', type: 'passphrase' },
+      { key: 'flowId', label: 'Published flow id', type: 'text', hint: 'The id of the flow you imported AND published in the portal.' },
+      { key: 'connectionId', label: 'Connection id', type: 'text', hint: 'The connection to the demo person — the flow’s customer party binds to this connection’s person.' },
+      {
+        key: 'fixture',
+        label: 'Fixture',
+        type: 'select',
+        options: [
+          { value: 'info', label: 'Info-gathering (data only, a person turn)' },
+          { value: 'contract', label: 'Contract (document + signature)' }
+        ],
+        hint: 'Pick the fixture you imported. The contract fixture also downloads the generated signed document on completion.'
+      },
+      ...FLOW_ADVANCED
     ]
   }
 ];

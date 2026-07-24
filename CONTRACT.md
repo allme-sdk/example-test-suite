@@ -1,9 +1,16 @@
-# The demo-backend contract (v1)
+# The demo-backend contract (v2)
 
-This is the canonical contract that every allme SDK identity example implements.
-It is what makes the six examples strictly comparable — an example test suite in
+This is the canonical contract that every allme SDK example implements.
+It is what makes the examples strictly comparable — an example test suite in
 the literal sense. The shared JSX frontend in this repo speaks only these
 endpoints and shapes; a thin per-SDK backend implements them.
+
+The contract is **cumulative and additive**: it grows one scenario *family* at a
+time (identity first — v1; the flow family below — v2), each at the
+next-available `contractVersion`. A backend lists ONLY its own family's scenarios
+in `GET /api/meta`; the shared bundle carries every family and renders whichever
+the running backend advertises. The endpoints and backend-state model below are
+shared by all families; per-family specifics are called out in their own section.
 
 One port serves bundle + API — default `8091`, overridable via the `PORT` env
 var; a busy port refuses at startup with a clear message. The SAME default
@@ -138,11 +145,52 @@ the private key). **The config file is written BY the backend from browser input
 while testing" rule is reversed for the examples precisely because seeing the real
 SDK config makes the demo clearer, sdk.html §2). No sessions, no database.
 
+## Flow family (#484 — contract v2)
+
+The flow family adds ONE scenario, `flow:run` (`kind: "runnable"`), demonstrating
+a contract flow driven through the PHP SDK's flow surface. It reuses the shared
+endpoints above; the family-specific points:
+
+- **`POST /api/scenarios/flow:run/config`** — setup values (spec §5): the service
+  data client (`client_id`/`client_secret`), the service PEM (`service_private_key`
+  path + `key_passphrase`), and `api_url`, written to the canonical config file the
+  run executes off (built via `Client::fromConfig` → `Config::fromFile`). The
+  demo-only run parameters — the published `flow_id`, the `connection_id`, and the
+  `fixture` choice (`"info" | "contract"`) — go to the sibling
+  `config/{id}.meta.json`, NOT the SDK config.
+- **`POST /api/scenarios/flow:run/start`** — builds the flow bindings
+  (`company →` `Client::identity()['company_user_id']`; `customer →`
+  `Connection::$personId` for the configured connection — fail clearly on a missing
+  connection / null person id), calls `triggerFlowRun(flowId, connectionId,
+  bindings)`, stores the returned platform `flowRunId` INSIDE the demo run file
+  (never a separate browser input), and returns `{runId, action:{"type":"none"}}`.
+  `409 not_configured` with no saved config, as elsewhere.
+- **`GET /api/runs/{runId}`** — the run envelope keeps the shared
+  `"pending"|"done"|"failed"` status (`"done"` once the flow completes, `"failed"`
+  on error). Its `result` is the pinned flow shape and **accumulates across ordinary
+  polls** (no long-poll): `{status: "running"|"waiting_person"|"completed",
+  steps: [{slug, type, submitted, accepted, error?}], answers?: [{slug, value}],
+  document?: {status, downloaded}}`. Each poll that finds the platform run
+  `awaiting_company` drives ONE step via `processFlowRun` (the designated `email`
+  step is submitted once with a canned invalid value → `ValidationError` →
+  `accepted:false` without advancing, then valid on the next poll → `accepted:true`);
+  `awaiting_customer` → `status:"waiting_person"` and nothing is touched (the next
+  poll after the phone answer resumes automatically); `completed` → the decrypted
+  `answers` (via `flowRunAnswers`) and, for the contract fixture, the `document`
+  (downloaded via `flowRunDocument`) are written. `calls` names the exact SDK
+  methods (`identity`, `triggerFlowRun`, `flowRun`, `processFlowRun`,
+  `flowRunAnswers`, `flowRunDocument`).
+- **`GET /callback`** is identity-only — a flow run has no OAuth consent redirect.
+
 ## Contract versioning
 
-The bundle root contains `contract.json` → `{"contractVersion": 1}`; at startup
+The bundle root contains `contract.json` → `{"contractVersion": 2}`; at startup
 the backend compares it against the version it implements and refuses a
 mismatch, printing both versions and the pin-bump pointer. Checksum failure
-refuses the same way. A contract change bumps `contractVersion` in this bundle
-AND the release tag; each SDK example's `frontend.lock` pins the tag + sha256 it
-was built against, so a contract bump is an explicit, per-example pin bump.
+refuses the same way. Versioning is **additive**: a new family takes the
+next-available version and PRESERVES every already-landed family (a backend
+rebases onto the current bundle rather than dropping a family), so families can
+land in any order without a version collision. A contract change bumps
+`contractVersion` in this bundle AND the release tag; each SDK example's
+`frontend.lock` pins the tag + sha256 it was built against, so a contract bump is
+an explicit, per-example pin bump.

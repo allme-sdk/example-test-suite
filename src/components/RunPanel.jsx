@@ -6,9 +6,66 @@ import { qrDataUrl } from '../lib/qr.js';
 const DETACHED_CAVEAT =
   'Against the default deployed target the QR works on a phone. Running against a LOCAL stack, a localhost… QR is unreachable from a phone — use the link on this machine as the local test.';
 
+// Flow family (#484): the result is {status, steps[], answers?, document?} and
+// accumulates across polls. Rendered distinctly from the generic key→value area:
+// a live step log (each type-checked submit, incl. the deliberate reject→accept),
+// a waiting-on-phone banner, then the decrypted answers + document status.
+function FlowResult({ result }) {
+  const [showRaw, setShowRaw] = useState(false);
+  const steps = Array.isArray(result.steps) ? result.steps : [];
+  const answers = Array.isArray(result.answers) ? result.answers : null;
+  const doc = result.document || null;
+  return (
+    <div className={s.block}>
+      <h4 className={s.blockTitle}>Flow run</h4>
+      {result.status === 'waiting_person' && (
+        <div className={s.prereq}>Waiting — the person answers this step on their phone. Polling continues automatically.</div>
+      )}
+      {steps.length > 0 && (
+        <ol className={s.calls}>
+          {steps.map((st, i) => (
+            <li key={i}>
+              <span className={`${s.dot} ${st.accepted ? s.dotDone : s.dotFailed}`} />
+              <span>
+                <strong>{st.slug}</strong>
+                <span className={s.muted}> ({st.type})</span> — submitted <code>{String(st.submitted)}</code>{' '}
+                {st.accepted ? 'accepted ✓' : `rejected ✗${st.error ? ` — ${st.error}` : ''}`}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {answers && (
+        <>
+          <h4 className={s.blockTitle}>Decrypted answers</h4>
+          <div className={s.dataRows}>
+            {answers.map((a) => (
+              <div key={a.slug} style={{ display: 'contents' }}>
+                <div className={s.dataKey}>{a.slug}</div>
+                <div className={s.dataVal}>{typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value)}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {doc && (
+        <div className={s.prereq}>
+          Document: {doc.status}{doc.downloaded ? ' — downloaded via flowRunDocument()' : ''}
+        </div>
+      )}
+      <button type="button" className={s.advToggle} onClick={() => setShowRaw((x) => !x)}>
+        {showRaw ? '▾ Raw' : '▸ Raw'}
+      </button>
+      {showRaw && <pre className={s.raw}>{JSON.stringify(result, null, 2)}</pre>}
+    </div>
+  );
+}
+
 function DataArea({ result }) {
   const [showRaw, setShowRaw] = useState(false);
   if (result === undefined || result === null) return null;
+  // A flow-family result carries a steps[] array — render it with the flow view.
+  if (Array.isArray(result.steps)) return <FlowResult result={result} />;
 
   const rows =
     result && typeof result === 'object' && !Array.isArray(result)
@@ -139,6 +196,10 @@ export default function RunPanel({ scenario, resumeRunId, canRun, needsSave }) {
           return;
         }
         if (run.calls) setCalls(run.calls);
+        // Surface an accumulating result WHILE still pending (flow family: the
+        // steps list grows across ordinary polls — spec §4). A no-op for identity,
+        // whose result is undefined until the run leaves pending.
+        if (run.result !== undefined) setResult(run.result);
         if (run.status === 'pending') {
           timerRef.current = setTimeout(tick, 1500);
           return;
