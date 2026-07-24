@@ -1,0 +1,22 @@
+{
+  "name": "example-test-suite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared JSX frontend for the allme SDK identity examples (the example test suite). Thin per-SDK backends implement the demo-backend contract (CONTRACT.md); this bundle is the ~90% shared UI.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "qrcode-generator": "^1.4.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}

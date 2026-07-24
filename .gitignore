@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Build output + release tarball — produced on disk for the reviewer's
+# release step, but never committed (fetched by consumers from the tagged
+# GitHub release asset, verified against frontend.lock's sha256).
+dist/
+dist.tar.gz
+
+# Editor / OS
+.DS_Store
+*.log
