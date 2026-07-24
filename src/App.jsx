@@ -28,9 +28,13 @@ export default function App() {
   const [clearError, setClearError] = useState(null);
 
   // Scenarios to render: only those present in /api/meta AND known to the
-  // design data; each carries meta's authoritative `kind`.
+  // design data; each carries meta's authoritative `kind`. Rendered in the
+  // backend's declared /api/meta order — stable for both integer identity ids
+  // and string companydata:* ids (a numeric id-subtraction sort would NaN on the
+  // namespaced string ids, #483).
   const scenarios = useMemo(() => {
     if (!meta) return [];
+    const order = new Map(meta.scenarios.map((m, i) => [String(m.id), i]));
     return meta.scenarios
       .map((m) => {
         const design = SCENARIOS_BY_ID[m.id];
@@ -38,7 +42,7 @@ export default function App() {
         return { ...design, kind: m.kind || design.kind };
       })
       .filter(Boolean)
-      .sort((a, b) => a.id - b.id);
+      .sort((a, b) => (order.get(String(a.id)) ?? 0) - (order.get(String(b.id)) ?? 0));
   }, [meta]);
 
   const scenariosById = useMemo(
@@ -122,8 +126,8 @@ export default function App() {
         <div className={s.brandMark}>
           <div className={s.logo}>a</div>
           <div>
-            <h1 className={s.title}>allme identity example</h1>
-            <p className={s.subtitle}>The shared example test suite — every identity scenario through an SDK</p>
+            <h1 className={s.title}>allme SDK example test suite</h1>
+            <p className={s.subtitle}>The shared example suite — every scenario the backend exposes, through an SDK</p>
           </div>
         </div>
         {meta && (

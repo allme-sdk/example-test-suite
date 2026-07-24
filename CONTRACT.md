@@ -1,16 +1,28 @@
-# The demo-backend contract (v2)
+# The demo-backend contract (v3)
 
 This is the canonical contract that every allme SDK example implements.
 It is what makes the examples strictly comparable — an example test suite in
 the literal sense. The shared JSX frontend in this repo speaks only these
 endpoints and shapes; a thin per-SDK backend implements them.
 
-The contract is **cumulative and additive**: it grows one scenario *family* at a
-time (identity first — v1; the flow family below — v2), each at the
-next-available `contractVersion`. A backend lists ONLY its own family's scenarios
-in `GET /api/meta`; the shared bundle carries every family and renders whichever
-the running backend advertises. The endpoints and backend-state model below are
-shared by all families; per-family specifics are called out in their own section.
+## Scenario families & ids
+
+The contract is **cumulative and additive** across scenario *families*. Each
+family owns a namespace of scenario ids so they stay globally unique in the one
+shared frontend, and **a backend lists only its own family in `/api/meta`**:
+
+- **identity** (v1, #478) — the eight sign-in / OIDC / 2FA scenarios; ids `1`–`8`
+  (the v1 integer ids the committed identity backend emits, kept stable).
+- **flow** (v2, #484) — the contract-flow scenario; id `flow:run`.
+- **company-data** (v3, #483) — the five regular company-data scenarios; ids
+  `companydata:read` · `companydata:definitions` · `companydata:changes` ·
+  `companydata:webhook` · `companydata:documents`.
+
+The frontend keys its scenario definitions on these ids and renders whatever the
+connected backend's `/api/meta` lists. `GET /api/meta`,
+`POST /api/scenarios/{id}/config|start|clear`, `GET /api/runs/{runId}` and
+`POST /api/clear` are shared by every family; `GET /callback` and
+`POST /api/scenarios/{id}/enroll` are **identity-family only** (the OAuth leg).
 
 One port serves bundle + API — default `8091`, overridable via the `PORT` env
 var; a busy port refuses at startup with a clear message. The SAME default
@@ -63,7 +75,7 @@ with no saved config → `409 {error:"not_configured"}`. Response envelope:
 **The OAuth `state` parameter IS the `runId`** — that is how the callback finds
 its run.
 
-### `GET /callback`
+### `GET /callback` *(identity family only)*
 
 The registered redirect URI (`http://localhost:8091/callback`). Handles BOTH
 delivery shapes: `?code=…&state=…` (complete via the SDK — `completeSignIn` — or
@@ -86,7 +98,7 @@ idempotent** (owner decision 2026-07-24: no burn-on-read): once written, the
 outcome is returned on every poll until the run's 30-min TTL or a Clear removes
 it. An unknown/expired `runId` → `404 {error:"not_found"}`.
 
-### `POST /api/scenarios/{id}/enroll`
+### `POST /api/scenarios/{id}/enroll` *(identity family only)*
 
 Scenario 8's enrollment step, also built off the saved config file (`409
 not_configured` if none). Request body selects the delivery leg (NOT a
@@ -182,15 +194,85 @@ endpoints above; the family-specific points:
   `flowRunAnswers`, `flowRunDocument`).
 - **`GET /callback`** is identity-only — a flow run has no OAuth consent redirect.
 
+## Company-data family (contract v3, #483)
+
+The five `companydata:*` scenarios exercise the regular company-data surface
+through the **service-role** data `Client`. They reuse the shared endpoints
+above (`/api/meta`, `/config`, `/start`, `/clear`, `/runs`, `/api/clear`) with no
+`/callback` and no `/enroll` (no OAuth leg), plus ONE public route,
+`POST /webhook`.
+
+**Config (`POST /api/scenarios/{id}/config`).** Every company-data scenario writes
+the service role to `.runtime/config/{sid}.json`: `api_url`, `client_id`,
+`client_secret`, `service_private_key` (PEM path), `key_passphrase` (the PEM is
+loaded at `Client` construction on every scenario). `companydata:changes` and
+`companydata:webhook` also set `cache_dir` (the SDK pump's buffer, under
+`.runtime/`). `companydata:webhook` adds `webhooks: {webhookId: secret}` (the SDK
+selects the secret by the delivery's `X-Allus-Webhook-Id` header) and records the
+webhook id in the `.meta.json` sidecar (the routing key `/start` needs);
+`companydata:documents` records the target person `share_code` in the sidecar.
+`{sid}` is a filesystem-safe token of the id (e.g. `companydata_read`).
+
+**Start actions.** The four data scenarios run the SDK call synchronously on
+`/start` and return `{"type":"data"}`; the outcome is read once via
+`GET /api/runs/{runId}` (`status:"done"`, `result`). `companydata:webhook`
+returns `{"type":"none"}` and is *accumulating* — see below.
+
+**Pinned result schemas** (so every SDK backend renders identically; the leading
+keys are the RENDERED columns, `raw` carries every remaining public `Change`
+field so the Raw view shows them — nothing is dropped from `result`):
+
+- `companydata:read` — `{connections:[{connectionId, personId, displayName,
+  customerType, shareCode, values:[{slug, value, live, at}]}]}` (grouped by
+  connection — the `Connection` object boundary and every customer identifier are
+  preserved, so two people who filled the same slug stay distinguishable).
+- `companydata:definitions` — `{fields:[{slug, label, type, mandatory, one_time}]}`
+  (the folded `mandatory` bool, not the raw split flags).
+- `companydata:changes` — `{events:[{event, personId, shareCode?, customerType?,
+  slug?, value?, live?, at, documentId?, status?, action?, id,
+  raw:{…full public Change fields}}], drained:true}`.
+- `companydata:documents` — `{docs:[{index, label, document_id, status}]}` (the
+  six document/contract types).
+- `companydata:webhook` — `{webhookId, events:[{source:"webhook"|"feed", event,
+  personId, shareCode?, customerType?, slug?, value?, live?, at, documentId?,
+  status?, action?, id, raw:{…}}], unparseable?:int}`.
+
+**`POST /webhook` (public inbound delivery).** The exact call/status sequence —
+NEVER the combined `handleWebhook()` (it throws one `WebhookError` for both a bad
+HMAC and a parse failure, so it can't drive the 401-vs-200 split):
+
+1. read `X-Allus-Webhook-Id`; unknown/stale id or no active run → **200**
+   acknowledge-and-discard.
+2. `verifyWebhook()` → `false` → **401** (a genuine signature failure; loud).
+3. `parseWebhook()` → success → append the event (`source:"webhook"`) + **200**; a
+   `WebhookError` here is a VERIFIED-but-unparseable delivery → **200**
+   acknowledge-and-note (increment `unparseable`) — NOT 401, the signature was
+   valid.
+
+All accepted-and-dropped cases return **200** because the platform delivery worker
+counts EXACTLY 200 as success (202/401/other = failure → retry + circuit-break).
+
+**The `companydata:webhook` run is accumulating, not long-poll** (a held-open
+request would wedge the single worker). `/start` persists a `.runtime/`
+routing record `webhookId → runId` (superseding any prior active webhook run) and
+returns `{"type":"none"}`. Events arrive via `POST /webhook` and, as an
+always-works fallback, via ONE immediate `Client::drainBatch()` raw feed fetch on
+EACH `GET /api/runs` poll (deduped on the pull-feed `Change.id`; NOT
+`processChanges()`, which loops the pump to empty and could stall the worker —
+the crash-safe pump is `companydata:changes`' job). `status` stays `pending` while
+collecting (an accumulating result under `pending` is the one semantic addition
+this family makes; the enum is unchanged). TTL expiry of the run drops its routing
+record; Clear removes both plus the pump cache.
+
 ## Contract versioning
 
-The bundle root contains `contract.json` → `{"contractVersion": 2}`; at startup
+The bundle root contains `contract.json` → `{"contractVersion": 3}`; at startup
 the backend compares it against the version it implements and refuses a
 mismatch, printing both versions and the pin-bump pointer. Checksum failure
-refuses the same way. Versioning is **additive**: a new family takes the
-next-available version and PRESERVES every already-landed family (a backend
-rebases onto the current bundle rather than dropping a family), so families can
-land in any order without a version collision. A contract change bumps
+refuses the same way. The contract is **cumulative and additive**: a new family
+is added at the **next-available** version (one higher than the landed bundle,
+read at implementation time — never hardcoded), PRESERVING every already-landed
+family and rebasing onto the current bundle. A contract change bumps
 `contractVersion` in this bundle AND the release tag; each SDK example's
 `frontend.lock` pins the tag + sha256 it was built against, so a contract bump is
 an explicit, per-example pin bump.

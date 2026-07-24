@@ -61,34 +61,134 @@ function FlowResult({ result }) {
   );
 }
 
+function fmtVal(v) {
+  if (v === null || v === undefined) return '—';
+  return typeof v === 'object' ? JSON.stringify(v) : String(v);
+}
+
+function KeyVal({ rows }) {
+  return (
+    <div className={s.dataRows}>
+      {rows.map(([k, v]) => (
+        <div key={k} style={{ display: 'contents' }}>
+          <div className={s.dataKey}>{k}</div>
+          <div className={s.dataVal}>{fmtVal(v)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// companydata:read — one card per connected person; two people who filled the
+// same slug stay distinguishable (spec §2). The compact renderer shows the pinned
+// columns; the Raw toggle shows the whole result.
+function Connections({ connections }) {
+  if (!connections.length) return <div className={s.muted}>No connected people.</div>;
+  return (
+    <div>
+      {connections.map((c, i) => (
+        <div key={c.connectionId || i} className={s.block} style={{ marginTop: i ? 12 : 0 }}>
+          <div className={s.blockTitle}>
+            {c.displayName || '(unnamed)'}{' '}
+            <span className={s.muted}>· {c.shareCode || 'no share code'}{c.customerType ? ` · ${c.customerType}` : ''}</span>
+          </div>
+          {c.values && c.values.length ? (
+            <KeyVal rows={c.values.map((v) => [v.slug, `${fmtVal(v.value)}${v.live === false ? ' (stale)' : ''}`])} />
+          ) : (
+            <div className={s.muted}>No shared values.</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// companydata:definitions — the request-field catalog.
+function Fields({ fields }) {
+  if (!fields.length) return <div className={s.muted}>No request fields configured.</div>;
+  return (
+    <KeyVal
+      rows={fields.map((f) => [
+        f.slug,
+        `${f.label || ''} · ${f.type || ''}${f.mandatory ? ' · mandatory' : ' · optional'}${f.one_time ? ' · one-time' : ''}`
+      ])}
+    />
+  );
+}
+
+// companydata:changes / :webhook — one row per event. The event name is always
+// present (connection_created vs connection_deleted vs document_status_changed stay
+// distinguishable); source labels a webhook delivery vs a pull-feed row. The Raw
+// toggle shows every event's `raw` object (the full public Change fields).
+function Events({ events }) {
+  if (!events.length) return <div className={s.muted}>No events yet.</div>;
+  return (
+    <div className={s.dataRows}>
+      {events.map((e, i) => (
+        <div key={e.id || i} style={{ display: 'contents' }}>
+          <div className={s.dataKey}>
+            {e.source ? `${e.source}: ` : ''}{e.event || e.note || '(event)'}
+          </div>
+          <div className={s.dataVal}>
+            {[
+              e.slug ? `${e.slug}=${fmtVal(e.value)}` : null,
+              e.documentId ? `doc ${e.documentId}${e.status ? ` (${e.status})` : ''}` : null,
+              e.shareCode ? `share ${e.shareCode}` : null,
+              e.at || null
+            ]
+              .filter(Boolean)
+              .join(' · ') || '—'}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// companydata:documents — the six created documents.
+function Docs({ docs }) {
+  if (!docs.length) return <div className={s.muted}>No documents created.</div>;
+  return (
+    <KeyVal rows={docs.map((d) => [`${d.index}. ${d.label}`, `${d.document_id || ''}${d.status ? ` (${d.status})` : ''}`])} />
+  );
+}
+
+// Shape-aware body: the pinned company-data result schemas render richly; any other
+// object falls back to a generic key→value grid (the identity family). The Raw view
+// (JSON.stringify(result)) always shows everything, incl. each event's `raw` object.
+function DataBody({ result }) {
+  if (Array.isArray(result.connections)) return <Connections connections={result.connections} />;
+  if (Array.isArray(result.fields)) return <Fields fields={result.fields} />;
+  if (Array.isArray(result.events)) {
+    return (
+      <div>
+        {(result.webhookId || result.unparseable) && (
+          <div className={s.muted} style={{ marginBottom: 8 }}>
+            {result.webhookId ? `webhook ${result.webhookId}` : ''}
+            {result.unparseable ? ` · ${result.unparseable} unparseable` : ''}
+          </div>
+        )}
+        <Events events={result.events} />
+      </div>
+    );
+  }
+  if (Array.isArray(result.docs)) return <Docs docs={result.docs} />;
+  if (typeof result === 'object' && !Array.isArray(result)) {
+    return <KeyVal rows={Object.entries(result)} />;
+  }
+  return <div className={s.muted}>Result is not a key→value object; see raw below.</div>;
+}
+
 function DataArea({ result }) {
   const [showRaw, setShowRaw] = useState(false);
   if (result === undefined || result === null) return null;
   // A flow-family result carries a steps[] array — render it with the flow view.
   if (Array.isArray(result.steps)) return <FlowResult result={result} />;
 
-  const rows =
-    result && typeof result === 'object' && !Array.isArray(result)
-      ? Object.entries(result)
-      : null;
-
   return (
     <div className={s.block}>
       <h4 className={s.blockTitle}>Data</h4>
-      {rows ? (
-        <div className={s.dataRows}>
-          {rows.map(([k, v]) => (
-            <div key={k} style={{ display: 'contents' }}>
-              <div className={s.dataKey}>{k}</div>
-              <div className={s.dataVal}>
-                {typeof v === 'object' ? JSON.stringify(v) : String(v)}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className={s.muted}>Result is not a key→value object; see raw below.</div>
-      )}
+      <DataBody result={result} />
       <button type="button" className={s.advToggle} onClick={() => setShowRaw((x) => !x)}>
         {showRaw ? '▾ Raw' : '▸ Raw'}
       </button>
@@ -196,9 +296,8 @@ export default function RunPanel({ scenario, resumeRunId, canRun, needsSave }) {
           return;
         }
         if (run.calls) setCalls(run.calls);
-        // Surface an accumulating result WHILE still pending (flow family: the
-        // steps list grows across ordinary polls — spec §4). A no-op for identity,
-        // whose result is undefined until the run leaves pending.
+        // Render accumulating results while pending: flow grows steps and
+        // companydata:webhook grows events.
         if (run.result !== undefined) setResult(run.result);
         if (run.status === 'pending') {
           timerRef.current = setTimeout(tick, 1500);

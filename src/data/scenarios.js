@@ -43,6 +43,123 @@ const FLOW_ADVANCED = [ADVANCED[0]];
 const PHONE_PREREQ =
   'A physical phone with the allme app, signed in as the demo person. It reaches the deployed platform naturally.';
 
+// ── company-data family (#483) ────────────────────────────────────────────────
+// The regular company-data surface companies use, through the service data client:
+// connections read, request-field definitions, the change feed, webhooks, documents.
+// Every company-data scenario uses the SERVICE role — the service PEM is loaded at
+// Client construction, so it is a required input on all five. Ids are namespaced
+// companydata:* so they stay globally unique across families in the shared frontend.
+
+// Advanced block for company-data — API base only (no OAuth authorize step).
+const CD_ADVANCED = [
+  {
+    key: 'apiUrl',
+    label: 'API base URL',
+    type: 'url',
+    advanced: true,
+    default: API_URL_DEFAULT,
+    hint: 'Deployed platform by default. Switch to a local stack (e.g. http://localhost:8070) without editing files.'
+  }
+];
+
+// Service-role inputs shared by every company-data scenario.
+const CD_SERVICE_FIELDS = [
+  { key: 'clientId', label: 'Data client id', type: 'text' },
+  { key: 'clientSecret', label: 'Data client secret', type: 'secret' },
+  {
+    key: 'servicePrivateKeyPem',
+    label: 'Service private key (PEM)',
+    type: 'pem',
+    hint: 'The service role always loads its key at Client construction (every company-data call, not only the decrypting ones). Read into localStorage; on Save written under .runtime/config/keys (0600) and referenced by path in the SDK config file.'
+  },
+  { key: 'keyPassphrase', label: 'Service key passphrase', type: 'passphrase' }
+];
+
+const CD_PORTAL_STEPS = [
+  'In the allus portal, create the SERVICE your company operates and download its private key (PEM).',
+  'Register a data client on that service (client_credentials) — its whitelist auto-grants /api/company-data/*, /api/keys/* and /api/contact-fields*.',
+  'On the service, configure the request fields (the slugs you ask connected people for).',
+  'Connect a test person to the service (the allme app → connect), so there is data to read.'
+];
+
+const COMPANYDATA_SCENARIOS = [
+  {
+    id: 'companydata:read',
+    kind: 'runnable',
+    title: 'Read connected people',
+    summary: 'Client::connections() reads each connected person’s decrypted values, grouped one card per person (two people who filled the same slug stay distinguishable).',
+    readmeChapter: 'Company data — read connections',
+    runButton: 'Read connections',
+    checklist: CD_PORTAL_STEPS,
+    prerequisites: [],
+    fields: [...CD_SERVICE_FIELDS, ...CD_ADVANCED]
+  },
+  {
+    id: 'companydata:definitions',
+    kind: 'runnable',
+    title: 'Request-field definitions',
+    summary: 'Client::requestFields() returns your request slugs with label / type / the folded mandatory flag + one_time.',
+    readmeChapter: 'Company data — request fields',
+    runButton: 'List request fields',
+    checklist: CD_PORTAL_STEPS,
+    prerequisites: [],
+    fields: [...CD_SERVICE_FIELDS, ...CD_ADVANCED]
+  },
+  {
+    id: 'companydata:changes',
+    kind: 'runnable',
+    title: 'Change-feed pump',
+    summary: 'Client::processChanges() drains the change feed through the crash-safe pump (idempotent per event on Change.id) and shows the drained batch.',
+    readmeChapter: 'Company data — change feed',
+    runButton: 'Drain the change feed',
+    checklist: [
+      ...CD_PORTAL_STEPS,
+      'Optionally edit one of the connected person’s shared values in the allme app just before running, so a field_updated event is in the feed to drain.'
+    ],
+    prerequisites: [],
+    fields: [...CD_SERVICE_FIELDS, ...CD_ADVANCED]
+  },
+  {
+    id: 'companydata:webhook',
+    kind: 'runnable',
+    title: 'Webhook receiver (dual-mode)',
+    summary: 'A public POST /webhook runs verifyWebhook() then parseWebhook() (401 on a bad HMAC, 200 otherwise); the same run also polls the change feed as an always-works fallback.',
+    readmeChapter: 'Company data — webhooks',
+    runButton: 'Start receiving',
+    checklist: [
+      ...CD_PORTAL_STEPS,
+      'Register a webhook on the service. Deployed platform: the cluster cannot reach localhost, so open a tunnel — cloudflared tunnel --url http://localhost:8091 — and register the tunnel’s public URL with /webhook appended. Local stack: register http://localhost:8091/webhook (the local delivery worker reaches it directly).',
+      'Set encrypt_payload OFF (this example holds no account private key; an encrypted body cannot be decrypted here).',
+      'Copy the webhook id and the one-time HMAC secret shown at registration into the inputs below.'
+    ],
+    prerequisites: [],
+    fields: [
+      ...CD_SERVICE_FIELDS,
+      { key: 'webhookId', label: 'Webhook id (routing key)', type: 'text', hint: 'The X-Allus-Webhook-Id the platform sends; selects the HMAC secret and keys the single active webhook run.' },
+      { key: 'webhookSecret', label: 'Webhook HMAC secret', type: 'secret', hint: 'The one-time secret shown at registration — written into the SDK config’s webhooks map; verifyWebhook() checks the signature against it.' },
+      ...CD_ADVANCED
+    ]
+  },
+  {
+    id: 'companydata:documents',
+    kind: 'runnable',
+    title: 'Create the six document types',
+    summary: 'Client::createDocument() creates all six document/contract types — broadcast JSON/PDF, per-person file, private file, and contracts requiring signature / acceptance.',
+    readmeChapter: 'Company data — documents',
+    runButton: 'Create documents',
+    checklist: [
+      ...CD_PORTAL_STEPS,
+      'Copy the connected person’s share code into “Target person share code” below — the per-person, private and contract documents are encrypted to that recipient.'
+    ],
+    prerequisites: [],
+    fields: [
+      ...CD_SERVICE_FIELDS,
+      { key: 'shareCode', label: 'Target person share code', type: 'text', hint: 'The connected person the per-person / private / contract documents target (broadcast documents ignore it).' },
+      ...CD_ADVANCED
+    ]
+  }
+];
+
 export const SCENARIOS = [
   {
     id: 1,
@@ -233,6 +350,7 @@ export const SCENARIOS = [
       ...ADVANCED
     ]
   },
+  ...COMPANYDATA_SCENARIOS,
   // ── Flow family (#484) ────────────────────────────────────────────────
   // A flow run needs no OAuth consent redirect (it drives the company party
   // via a data client + the service key), so its advanced block is API-URL only.
