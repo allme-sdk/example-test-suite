@@ -7,16 +7,26 @@ endpoints and shapes; a thin per-SDK backend implements them.
 
 ## Scenario families & ids
 
-The contract is **cumulative and additive** across scenario *families*. Each
-family owns a namespace of scenario ids so they stay globally unique in the one
-shared frontend, and **a backend lists only its own family in `/api/meta`**:
+**One backend serves ALL families (#494).** A single server process, started once,
+lists every family's scenarios in `/api/meta` and serves them on one port; the
+portal renders one **section per family**. (Before #494 each family was a separate
+sub-project, each pinning a different frontend release and each having to be
+started on its own — only one could run at a time.) The frontend groups by family
+using the scenario id, so a backend that lists only one family still renders
+correctly — the section headings simply collapse to none.
 
-- **identity** (v1, #478) — the eight sign-in / OIDC / 2FA scenarios; ids `1`–`8`
-  (the v1 integer ids the committed identity backend emits, kept stable).
-- **flow** (v2, #484) — the contract-flow scenario; id `flow:run`.
-- **company-data** (v3, #483) — the five regular company-data scenarios; ids
+Each family owns a namespace of scenario ids so they stay globally unique:
+
+- **identity** (#478) — the eight sign-in / OIDC / 2FA scenarios; ids `1`–`8`
+  (the original integer ids, kept stable).
+- **flow** (#484) — the contract-flow scenario; id `flow:run`.
+- **company-data** (#483) — the five regular company-data scenarios; ids
   `companydata:read` · `companydata:definitions` · `companydata:changes` ·
   `companydata:webhook` · `companydata:documents`.
+
+There is now **one contract version (3) and one frontend release** for all three
+families — the earlier per-family versions/pins (v1/v2/v3 with three separate
+`frontend.lock` files per SDK) are retired: each SDK has ONE `frontend.lock`.
 
 The frontend keys its scenario definitions on these ids and renders whatever the
 connected backend's `/api/meta` lists. `GET /api/meta`,
@@ -27,8 +37,9 @@ connected backend's `/api/meta` lists. `GET /api/meta`,
 One port serves bundle + API — default `8091`, overridable via the `PORT` env
 var; a busy port refuses at startup with a clear message. The SAME default
 across all SDK examples is deliberate (one browser origin → the localStorage
-setup carries across SDKs), with the documented consequence that two examples
-don't run side by side.
+setup carries across SDKs), with the documented consequence that two SDKs'
+examples don't run side by side. Since #494 that is no longer a limitation
+*within* an SDK: its one server already carries all three families.
 
 ## Endpoints
 
@@ -94,7 +105,7 @@ detached/challenge outcome performs ONE short-timeout SDK call
 (`pollResult`/`waitForResult` with `timeout=2`), treats the SDK timeout as
 still-pending, and on a 200 writes the outcome to the run file (write-temp +
 atomic rename). No handler ever blocks for the SDK's 600s defaults. **Reads are
-idempotent** (owner decision 2026-07-24: no burn-on-read): once written, the
+idempotent** (no burn-on-read): once written, the
 outcome is returned on every poll until the run's 30-min TTL or a Clear removes
 it. An unknown/expired `runId` → `404 {error:"not_found"}`.
 
@@ -123,7 +134,7 @@ at it). Global clear wipes all run files and the entire `.runtime/config/` tree
 (configs, metas, keys). Single-worker server (below) → no concurrent mutation to
 guard; a plain unlink suffices.
 
-## Backend state — single-worker, idempotent (owner decision 2026-07-24: no burn-on-read, no locks)
+## Backend state — single-worker, idempotent (no burn-on-read, no locks)
 
 PHP's built-in server runs as ONE worker (do NOT set `PHP_CLI_SERVER_WORKERS`),
 so requests serialize and there is no cross-request concurrency to guard — no
@@ -157,7 +168,7 @@ the private key). **The config file is written BY the backend from browser input
 while testing" rule is reversed for the examples precisely because seeing the real
 SDK config makes the demo clearer, sdk.html §2). No sessions, no database.
 
-## Flow family (#484 — contract v2)
+## Flow family (#484)
 
 The flow family adds ONE scenario, `flow:run` (`kind: "runnable"`), demonstrating
 a contract flow driven through the PHP SDK's flow surface. It reuses the shared
@@ -194,7 +205,7 @@ endpoints above; the family-specific points:
   `flowRunAnswers`, `flowRunDocument`).
 - **`GET /callback`** is identity-only — a flow run has no OAuth consent redirect.
 
-## Company-data family (contract v3, #483)
+## Company-data family (#483)
 
 The five `companydata:*` scenarios exercise the regular company-data surface
 through the **service-role** data `Client`. They reuse the shared endpoints
@@ -275,4 +286,4 @@ read at implementation time — never hardcoded), PRESERVING every already-lande
 family and rebasing onto the current bundle. A contract change bumps
 `contractVersion` in this bundle AND the release tag; each SDK example's
 `frontend.lock` pins the tag + sha256 it was built against, so a contract bump is
-an explicit, per-example pin bump.
+an explicit pin bump — one `frontend.lock` per SDK, since one backend now serves every family (#494).

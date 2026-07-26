@@ -404,6 +404,24 @@ export const SCENARIOS_BY_ID = SCENARIOS.reduce((acc, s) => {
   return acc;
 }, {});
 
+// ── scenario families (#494) ─────────────────────────────────────────────────
+// One backend now serves ALL families from one port, so the portal groups the grid
+// into a section per family. The family is derived from the scenario id: the
+// identity family kept its original bare integer ids (1–8, contract v1), the later
+// families are namespaced `<family>:<name>`.
+export const FAMILIES = [
+  { key: 'identity', title: 'Identity', blurb: 'Sign in with allme, OIDC login, and 2FA — the scenarios a site uses to authenticate a person.' },
+  { key: 'company-data', title: 'Company data', blurb: 'The regular company-data surface: read connected people, request fields, the change feed, webhooks and documents.' },
+  { key: 'flow', title: 'Contract flows', blurb: 'Drive a contract flow end to end: trigger, type-check a step, the person’s turn, then the answers and the generated document.' }
+];
+
+export function familyOf(id) {
+  const s = String(id);
+  if (s.startsWith('companydata:')) return 'company-data';
+  if (s.startsWith('flow:')) return 'flow';
+  return 'identity'; // the v1 integer ids
+}
+
 // A runnable scenario is "ready" when every required (non-advanced) field has a
 // value. Advanced inputs always have a default, so they never gate readiness.
 export function isScenarioReady(scenario, values) {
