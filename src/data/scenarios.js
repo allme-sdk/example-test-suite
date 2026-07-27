@@ -323,7 +323,7 @@ export const SCENARIOS = [
     enrollButtonDetached: 'Enroll — continue on phone',
     checklist: [
       'Registration (a): in the allus portal → OAuth apps page, register an OAuth app WITH a service reference (required for the 2fa_enroll step). Mark it Confidential (a public app issues NO client secret) and set its redirect URI to http://localhost:8091/callback.',
-      'Registration (b): register a data client whose whitelist grants /api/service-2fa/* (used for the challenges).',
+      'Registration (b): register a data client for the challenges. Its endpoint whitelist — /api/service-2fa/* included — is granted automatically at registration, so there is nothing to pick or tick. Use a client registered on 2026-07-23 or later: an older one predates that grant, and until the platform has backfilled it every challenge call returns 403 “Client not authorized for this endpoint”. Registering a fresh data client always gives you the current whitelist.',
       'In the portal service settings, you will toggle number matching ON and OFF to exercise both.',
       'Enter the OAuth-app (with-service) creds, the data-client creds, and a demo user name below. Enroll first — “Enroll device (redirect)” completes via the callback, “Enroll — continue on phone” is the detached leg (link + QR, completes by pollResult) — then run a challenge.'
     ],
