@@ -1,34 +1,49 @@
-import s from '../brand.module.css';
+import { CheckCircle2, CircleDashed, BookOpen, ChevronRight } from 'lucide-react';
+import * as ui from '../ui.js';
 import { isScenarioReady, FAMILIES, familyOf } from '../data/scenarios.js';
 
 function Badge({ scenario, values }) {
   if (scenario.kind === 'guide') {
-    return <span className={`${s.badge} ${s.badgeGuide}`}>Guide</span>;
+    return (
+      <span className={ui.badgeBrand}>
+        <BookOpen className="w-3 h-3" />
+        Guide
+      </span>
+    );
   }
   const ready = isScenarioReady(scenario, values);
   return ready ? (
-    <span className={`${s.badge} ${s.badgeReady}`}>Ready</span>
+    <span className={ui.badgeOk}>
+      <CheckCircle2 className="w-3 h-3" />
+      Ready
+    </span>
   ) : (
-    <span className={`${s.badge} ${s.badgeSetup}`}>Needs setup</span>
+    <span className={ui.badgeWarn}>
+      <CircleDashed className="w-3 h-3" />
+      Needs setup
+    </span>
   );
 }
 
 function Cards({ scenarios, valuesById, onSelect }) {
   return (
-    <div className={s.grid}>
+    <div className="grid gap-3 sm:grid-cols-2">
       {scenarios.map((scenario) => (
         <button
           key={scenario.id}
           type="button"
-          className={s.card}
+          className="group text-left p-4 rounded-xl bg-surface border border-line hover:border-brand-300 hover:bg-hover transition-colors"
           onClick={() => onSelect(scenario.id)}
         >
-          <div className={s.cardHead}>
-            <span className={s.cardNum}>Scenario {scenario.id}</span>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className={ui.faint}>Scenario {scenario.id}</span>
             <Badge scenario={scenario} values={valuesById[scenario.id] || {}} />
           </div>
-          <h3 className={s.cardTitle}>{scenario.title}</h3>
-          <p className={s.cardSummary}>{scenario.summary}</p>
+          <h3 className={`${ui.h3} flex items-center gap-1`}>
+            {scenario.title}
+            <ChevronRight className="w-4 h-4 text-faint group-hover:text-brand-600 transition-colors" />
+          </h3>
+          <p className={`${ui.sub} mt-1`}>{scenario.summary}</p>
         </button>
       ))}
     </div>
@@ -40,7 +55,7 @@ function Cards({ scenarios, valuesById, onSelect }) {
 // so a backend that implements only one family still renders correctly.
 export default function ScenarioGrid({ scenarios, valuesById, onSelect }) {
   if (!scenarios.length) {
-    return <div className={s.empty}>The backend’s /api/meta listed no scenarios.</div>;
+    return <div className={ui.noteBox}>The backend’s /api/meta listed no scenarios.</div>;
   }
   const sections = FAMILIES
     .map((f) => ({ ...f, items: scenarios.filter((sc) => familyOf(sc.id) === f.key) }))
@@ -51,11 +66,11 @@ export default function ScenarioGrid({ scenarios, valuesById, onSelect }) {
     return <Cards scenarios={scenarios} valuesById={valuesById} onSelect={onSelect} />;
   }
   return (
-    <div>
+    <div className="space-y-6">
       {sections.map((f) => (
-        <section key={f.key} className={s.block}>
-          <h3 className={s.sectionTitle}>{f.title}</h3>
-          <p className={s.subtitle}>{f.blurb}</p>
+        <section key={f.key}>
+          <h3 className={ui.h3}>{f.title}</h3>
+          <p className={`${ui.sub} mt-0.5 mb-3`}>{f.blurb}</p>
           <Cards scenarios={f.items} valuesById={valuesById} onSelect={onSelect} />
         </section>
       ))}

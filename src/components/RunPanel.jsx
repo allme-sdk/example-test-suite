@@ -1,62 +1,86 @@
 import { useEffect, useRef, useState } from 'react';
-import s from '../brand.module.css';
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  Play,
+  Smartphone,
+  X,
+  XCircle
+} from 'lucide-react';
+import * as ui from '../ui.js';
 import { startScenario, enrollScenario, getRun } from '../lib/api.js';
 import { qrDataUrl } from '../lib/qr.js';
 
 const DETACHED_CAVEAT =
   'Against the default deployed target the QR works on a phone. Running against a LOCAL stack, a localhost… QR is unreachable from a phone — use the link on this machine as the local test.';
 
+/** The Raw JSON disclosure, identical wherever a result is shown. */
+function RawToggle({ value }) {
+  const [showRaw, setShowRaw] = useState(false);
+  return (
+    <div className="pt-1">
+      <button type="button" className={ui.btnGhost} onClick={() => setShowRaw((x) => !x)}>
+        {showRaw ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        Raw
+      </button>
+      {showRaw && <pre className={ui.pre}>{JSON.stringify(value, null, 2)}</pre>}
+    </div>
+  );
+}
+
 // Flow family (#484): the result is {status, steps[], answers?, document?} and
 // accumulates across polls. Rendered distinctly from the generic key→value area:
 // a live step log (each type-checked submit, incl. the deliberate reject→accept),
 // a waiting-on-phone banner, then the decrypted answers + document status.
 function FlowResult({ result }) {
-  const [showRaw, setShowRaw] = useState(false);
   const steps = Array.isArray(result.steps) ? result.steps : [];
   const answers = Array.isArray(result.answers) ? result.answers : null;
   const doc = result.document || null;
   return (
-    <div className={s.block}>
-      <h4 className={s.blockTitle}>Flow run</h4>
+    <div className={`${ui.block} space-y-3`}>
+      <h4 className={ui.h4}>Flow run</h4>
       {result.status === 'waiting_person' && (
-        <div className={s.prereq}>Waiting — the person answers this step on their phone. Polling continues automatically.</div>
+        <div className={`${ui.noteBox} flex items-center gap-2`}>
+          <Smartphone className="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-300" />
+          Waiting — the person answers this step on their phone. Polling continues automatically.
+        </div>
       )}
       {steps.length > 0 && (
-        <ol className={s.calls}>
+        <ol className="space-y-1.5">
           {steps.map((st, i) => (
-            <li key={i}>
-              <span className={`${s.dot} ${st.accepted ? s.dotDone : s.dotFailed}`} />
+            <li key={i} className="flex items-start gap-2 text-sm text-body">
+              {st.accepted ? (
+                <Check className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <X className="w-4 h-4 mt-0.5 shrink-0 text-red-600 dark:text-red-400" />
+              )}
               <span>
-                <strong>{st.slug}</strong>
-                <span className={s.muted}> ({st.type})</span> — submitted <code>{String(st.submitted)}</code>{' '}
-                {st.accepted ? 'accepted ✓' : `rejected ✗${st.error ? ` — ${st.error}` : ''}`}
+                <strong className="text-heading">{st.slug}</strong>
+                <span className="text-muted"> ({st.type})</span> — submitted{' '}
+                <code className={ui.code}>{String(st.submitted)}</code>{' '}
+                {st.accepted ? 'accepted' : `rejected${st.error ? ` — ${st.error}` : ''}`}
               </span>
             </li>
           ))}
         </ol>
       )}
       {answers && (
-        <>
-          <h4 className={s.blockTitle}>Decrypted answers</h4>
-          <div className={s.dataRows}>
-            {answers.map((a) => (
-              <div key={a.slug} style={{ display: 'contents' }}>
-                <div className={s.dataKey}>{a.slug}</div>
-                <div className={s.dataVal}>{typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value)}</div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-      {doc && (
-        <div className={s.prereq}>
-          Document: {doc.status}{doc.downloaded ? ' — downloaded via flowRunDocument()' : ''}
+        <div>
+          <h4 className={ui.h4}>Decrypted answers</h4>
+          <KeyVal rows={answers.map((a) => [a.slug, a.value])} />
         </div>
       )}
-      <button type="button" className={s.advToggle} onClick={() => setShowRaw((x) => !x)}>
-        {showRaw ? '▾ Raw' : '▸ Raw'}
-      </button>
-      {showRaw && <pre className={s.raw}>{JSON.stringify(result, null, 2)}</pre>}
+      {doc && (
+        <div className={ui.noteBox}>
+          Document: {doc.status}
+          {doc.downloaded ? ' — downloaded via flowRunDocument()' : ''}
+        </div>
+      )}
+      <RawToggle value={result} />
     </div>
   );
 }
@@ -68,14 +92,14 @@ function fmtVal(v) {
 
 function KeyVal({ rows }) {
   return (
-    <div className={s.dataRows}>
-      {rows.map(([k, v]) => (
-        <div key={k} style={{ display: 'contents' }}>
-          <div className={s.dataKey}>{k}</div>
-          <div className={s.dataVal}>{fmtVal(v)}</div>
+    <dl className="mt-2 divide-y divide-line rounded-lg border border-line overflow-hidden">
+      {rows.map(([k, v], i) => (
+        <div key={i} className="grid grid-cols-3 gap-3 px-3 py-2 bg-surface">
+          <dt className="col-span-1 text-xs font-medium text-muted break-words">{k}</dt>
+          <dd className={`col-span-2 text-sm text-body break-words ${ui.code}`}>{fmtVal(v)}</dd>
         </div>
       ))}
-    </div>
+    </dl>
   );
 }
 
@@ -83,19 +107,22 @@ function KeyVal({ rows }) {
 // same slug stay distinguishable (spec §2). The compact renderer shows the pinned
 // columns; the Raw toggle shows the whole result.
 function Connections({ connections }) {
-  if (!connections.length) return <div className={s.muted}>No connected people.</div>;
+  if (!connections.length) return <div className={ui.sub}>No connected people.</div>;
   return (
-    <div>
+    <div className="space-y-3">
       {connections.map((c, i) => (
-        <div key={c.connectionId || i} className={s.block} style={{ marginTop: i ? 12 : 0 }}>
-          <div className={s.blockTitle}>
-            {c.displayName || '(unnamed)'}{' '}
-            <span className={s.muted}>· {c.shareCode || 'no share code'}{c.customerType ? ` · ${c.customerType}` : ''}</span>
+        <div key={c.connectionId || i} className="rounded-lg border border-line bg-surface p-3">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className={ui.h4}>{c.displayName || '(unnamed)'}</span>
+            <span className={ui.faint}>
+              {c.shareCode || 'no share code'}
+              {c.customerType ? ` · ${c.customerType}` : ''}
+            </span>
           </div>
           {c.values && c.values.length ? (
             <KeyVal rows={c.values.map((v) => [v.slug, `${fmtVal(v.value)}${v.live === false ? ' (stale)' : ''}`])} />
           ) : (
-            <div className={s.muted}>No shared values.</div>
+            <div className={`${ui.sub} mt-1`}>No shared values.</div>
           )}
         </div>
       ))}
@@ -105,7 +132,7 @@ function Connections({ connections }) {
 
 // companydata:definitions — the request-field catalog.
 function Fields({ fields }) {
-  if (!fields.length) return <div className={s.muted}>No request fields configured.</div>;
+  if (!fields.length) return <div className={ui.sub}>No request fields configured.</div>;
   return (
     <KeyVal
       rows={fields.map((f) => [
@@ -121,33 +148,27 @@ function Fields({ fields }) {
 // distinguishable); source labels a webhook delivery vs a pull-feed row. The Raw
 // toggle shows every event's `raw` object (the full public Change fields).
 function Events({ events }) {
-  if (!events.length) return <div className={s.muted}>No events yet.</div>;
+  if (!events.length) return <div className={ui.sub}>No events yet.</div>;
   return (
-    <div className={s.dataRows}>
-      {events.map((e, i) => (
-        <div key={e.id || i} style={{ display: 'contents' }}>
-          <div className={s.dataKey}>
-            {e.source ? `${e.source}: ` : ''}{e.event || e.note || '(event)'}
-          </div>
-          <div className={s.dataVal}>
-            {[
-              e.slug ? `${e.slug}=${fmtVal(e.value)}` : null,
-              e.documentId ? `doc ${e.documentId}${e.status ? ` (${e.status})` : ''}` : null,
-              e.shareCode ? `share ${e.shareCode}` : null,
-              e.at || null
-            ]
-              .filter(Boolean)
-              .join(' · ') || '—'}
-          </div>
-        </div>
-      ))}
-    </div>
+    <KeyVal
+      rows={events.map((e) => [
+        `${e.source ? `${e.source}: ` : ''}${e.event || e.note || '(event)'}`,
+        [
+          e.slug ? `${e.slug}=${fmtVal(e.value)}` : null,
+          e.documentId ? `doc ${e.documentId}${e.status ? ` (${e.status})` : ''}` : null,
+          e.shareCode ? `share ${e.shareCode}` : null,
+          e.at || null
+        ]
+          .filter(Boolean)
+          .join(' · ') || '—'
+      ])}
+    />
   );
 }
 
 // companydata:documents — the six created documents.
 function Docs({ docs }) {
-  if (!docs.length) return <div className={s.muted}>No documents created.</div>;
+  if (!docs.length) return <div className={ui.sub}>No documents created.</div>;
   return (
     <KeyVal rows={docs.map((d) => [`${d.index}. ${d.label}`, `${d.document_id || ''}${d.status ? ` (${d.status})` : ''}`])} />
   );
@@ -163,7 +184,7 @@ function DataBody({ result }) {
     return (
       <div>
         {(result.webhookId || result.unparseable) && (
-          <div className={s.muted} style={{ marginBottom: 8 }}>
+          <div className={`${ui.faint} mb-2`}>
             {result.webhookId ? `webhook ${result.webhookId}` : ''}
             {result.unparseable ? ` · ${result.unparseable} unparseable` : ''}
           </div>
@@ -176,23 +197,19 @@ function DataBody({ result }) {
   if (typeof result === 'object' && !Array.isArray(result)) {
     return <KeyVal rows={Object.entries(result)} />;
   }
-  return <div className={s.muted}>Result is not a key→value object; see raw below.</div>;
+  return <div className={ui.sub}>Result is not a key→value object; see raw below.</div>;
 }
 
 function DataArea({ result }) {
-  const [showRaw, setShowRaw] = useState(false);
   if (result === undefined || result === null) return null;
   // A flow-family result carries a steps[] array — render it with the flow view.
   if (Array.isArray(result.steps)) return <FlowResult result={result} />;
 
   return (
-    <div className={s.block}>
-      <h4 className={s.blockTitle}>Data</h4>
+    <div className={`${ui.block} space-y-2`}>
+      <h4 className={ui.h4}>Data</h4>
       <DataBody result={result} />
-      <button type="button" className={s.advToggle} onClick={() => setShowRaw((x) => !x)}>
-        {showRaw ? '▾ Raw' : '▸ Raw'}
-      </button>
-      {showRaw && <pre className={s.raw}>{JSON.stringify(result, null, 2)}</pre>}
+      <RawToggle value={result} />
     </div>
   );
 }
@@ -200,20 +217,21 @@ function DataArea({ result }) {
 function WhatHappened({ calls, readmeChapter }) {
   if (!calls || !calls.length) return null;
   return (
-    <div className={s.block}>
-      <h4 className={s.blockTitle}>What just happened</h4>
-      <ol className={s.calls}>
+    <div className={`${ui.block} space-y-2`}>
+      <h4 className={ui.h4}>What just happened</h4>
+      <ol className="space-y-1.5">
         {calls.map((call, i) => (
-          <li key={i}>
-            <span className={s.callIndex}>{i + 1}</span>
-            {call}
+          <li key={i} className="flex items-start gap-2 text-sm text-body">
+            <span className="mt-0.5 w-5 h-5 shrink-0 rounded-full bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 text-[11px] font-semibold flex items-center justify-center">
+              {i + 1}
+            </span>
+            <span className={ui.code}>{call}</span>
           </li>
         ))}
       </ol>
       {readmeChapter && (
-        <div className={s.readmeLink}>
-          <span className={s.muted}>PHP SDK README chapter: </span>
-          <span className={s.link}>{readmeChapter}</span>
+        <div className={ui.faint}>
+          SDK README chapter: <span className="text-brand-700 dark:text-brand-300">{readmeChapter}</span>
         </div>
       )}
     </div>
@@ -222,14 +240,17 @@ function WhatHappened({ calls, readmeChapter }) {
 
 function StatusRow({ status }) {
   const map = {
-    pending: [s.dotPending, 'Running — polling GET /api/runs/{runId}…'],
-    done: [s.dotDone, 'Done'],
-    failed: [s.dotFailed, 'Failed']
+    pending: [
+      <Loader2 key="i" className="w-4 h-4 animate-spin text-brand-600 dark:text-brand-300" />,
+      'Running — polling GET /api/runs/{runId}…'
+    ],
+    done: [<Check key="i" className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />, 'Done'],
+    failed: [<XCircle key="i" className="w-4 h-4 text-red-600 dark:text-red-400" />, 'Failed']
   };
-  const [dot, label] = map[status] || map.pending;
+  const [icon, label] = map[status] || map.pending;
   return (
-    <div className={s.statusRow}>
-      <span className={`${s.dot} ${dot}`} />
+    <div className="flex items-center gap-2 text-sm text-body">
+      {icon}
       <span>{label}</span>
     </div>
   );
@@ -237,18 +258,27 @@ function StatusRow({ status }) {
 
 function DetachedPanel({ url }) {
   return (
-    <div className={s.block}>
-      <h4 className={s.blockTitle}>Continue on your phone</h4>
-      <div className={s.detached}>
-        <div className={s.qr}>
-          <img src={qrDataUrl(url)} alt="QR code for the detached sign-in URL" />
+    <div className={`${ui.block} space-y-3`}>
+      <h4 className={`${ui.h4} flex items-center gap-1.5`}>
+        <Smartphone className="w-4 h-4 text-brand-600 dark:text-brand-300" />
+        Continue on your phone
+      </h4>
+      <div className="flex flex-wrap items-start gap-4">
+        <div className="rounded-lg border border-line bg-white p-2 shrink-0">
+          <img src={qrDataUrl(url)} alt="QR code for the detached sign-in URL" className="block w-40 h-40" />
         </div>
-        <div className={s.detachedInfo}>
-          <div>
-            <div className={s.muted}>Open on your phone, or click here on this machine:</div>
-            <a className={s.link} href={url} target="_blank" rel="noreferrer">{url}</a>
-          </div>
-          <div className={s.caveat}>{DETACHED_CAVEAT}</div>
+        <div className="flex-1 min-w-[16rem] space-y-2">
+          <div className={ui.sub}>Open on your phone, or click here on this machine:</div>
+          <a
+            className="inline-flex items-center gap-1 text-sm text-brand-700 dark:text-brand-300 hover:underline break-all"
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {url}
+            <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+          </a>
+          <div className={ui.faint}>{DETACHED_CAVEAT}</div>
         </div>
       </div>
     </div>
@@ -257,15 +287,20 @@ function DetachedPanel({ url }) {
 
 function ChallengePanel({ matchingDigits }) {
   return (
-    <div className={s.block}>
-      <h4 className={s.blockTitle}>Approve on your phone</h4>
+    <div className={`${ui.block} space-y-2`}>
+      <h4 className={`${ui.h4} flex items-center gap-1.5`}>
+        <Smartphone className="w-4 h-4 text-brand-600 dark:text-brand-300" />
+        Approve on your phone
+      </h4>
       {matchingDigits ? (
         <div>
-          <div className={s.muted}>Match these digits in the allme app, then approve:</div>
-          <div className={s.digits}>{matchingDigits}</div>
+          <div className={ui.sub}>Match these digits in the allme app, then approve:</div>
+          <div className="mt-1 font-mono text-3xl font-semibold tracking-[0.3em] text-heading">{matchingDigits}</div>
         </div>
       ) : (
-        <div className={s.muted}>Approve or deny the challenge in the allme app. (Number matching is off for this run.)</div>
+        <div className={ui.sub}>
+          Approve or deny the challenge in the allme app. (Number matching is off for this run.)
+        </div>
       )}
     </div>
   );
@@ -362,50 +397,39 @@ export default function RunPanel({ scenario, resumeRunId, canRun, needsSave }) {
   }
 
   return (
-    <div className={s.block}>
-      <div className={s.runButtons}>
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
         {scenario.enrollButton && (
-          <button
-            type="button"
-            className={s.btn}
-            disabled={busy || !canRun}
-            onClick={() => run('enroll', 'redirect')}
-          >
+          <button type="button" className={ui.btn} disabled={busy || !canRun} onClick={() => run('enroll', 'redirect')}>
             {scenario.enrollButton}
           </button>
         )}
         {scenario.enrollButtonDetached && (
-          <button
-            type="button"
-            className={s.btn}
-            disabled={busy || !canRun}
-            onClick={() => run('enroll', 'detached')}
-          >
+          <button type="button" className={ui.btn} disabled={busy || !canRun} onClick={() => run('enroll', 'detached')}>
             {scenario.enrollButtonDetached}
           </button>
         )}
-        <button
-          type="button"
-          className={`${s.btn} ${s.btnPrimary}`}
-          disabled={busy || !canRun}
-          onClick={() => run('start')}
-        >
+        <button type="button" className={ui.btnPrimary} disabled={busy || !canRun} onClick={() => run('start')}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
           {scenario.runButton}
         </button>
       </div>
       {!canRun && (
-        <div className={s.fieldHint}>
+        <div className={ui.faint}>
           {needsSave
             ? 'Save your settings above to enable running.'
             : 'Complete the required inputs above to enable running.'}
         </div>
       )}
 
-      {error && <div className={s.errorBox}>{error}</div>}
-
-      {action && action.type === 'detached' && status === 'pending' && (
-        <DetachedPanel url={action.url} />
+      {error && (
+        <div className={ui.errorBox}>
+          <AlertCircle className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+          {error}
+        </div>
       )}
+
+      {action && action.type === 'detached' && status === 'pending' && <DetachedPanel url={action.url} />}
       {action && action.type === 'challenge' && status === 'pending' && (
         <ChallengePanel matchingDigits={action.matchingDigits} />
       )}

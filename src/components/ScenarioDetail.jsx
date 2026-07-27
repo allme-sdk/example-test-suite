@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import s from '../brand.module.css';
+import { ArrowLeft, Trash2 } from 'lucide-react';
+import * as ui from '../ui.js';
 import SetupWizard from './SetupWizard.jsx';
 import RunPanel from './RunPanel.jsx';
 import GuideCard from './GuideCard.jsx';
@@ -57,22 +58,24 @@ export default function ScenarioDetail({
   }
 
   return (
-    <div>
-      <button type="button" className={s.backLink} onClick={onBack}>
-        ← All scenarios
+    <div className="space-y-3">
+      <button type="button" className={ui.btnGhost} onClick={onBack}>
+        <ArrowLeft className="w-4 h-4" />
+        All scenarios
       </button>
-      <div className={s.panel}>
-        <div className={s.panelHead}>
+      <div className={ui.panel}>
+        <div className="flex items-start justify-between gap-4 pb-4 border-b border-line">
           <div>
-            <div className={s.cardNum}>Scenario {scenario.id}</div>
-            <h2 className={s.title} style={{ marginTop: 4 }}>{scenario.title}</h2>
-            <p className={s.subtitle}>{scenario.summary}</p>
+            <div className={ui.faint}>Scenario {scenario.id}</div>
+            <h2 className={`${ui.h2} mt-1`}>{scenario.title}</h2>
+            <p className={`${ui.sub} mt-0.5`}>{scenario.summary}</p>
           </div>
-          <button type="button" className={`${s.btn} ${s.btnDanger}`} onClick={onClear}>
+          <button type="button" className={ui.btnDanger} onClick={onClear}>
+            <Trash2 className="w-4 h-4" />
             Clear
           </button>
         </div>
-        <div className={s.panelBody}>
+        <div className="pt-4 space-y-4">
           <SetupWizard
             scenario={scenario}
             values={values}

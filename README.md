@@ -1,7 +1,8 @@
 # example-test-suite
 
-The shared JSX frontend for the **allme SDK identity examples**. About 90% of
-each example's logic is this frontend; each SDK example is a thin backend that
+The shared JSX frontend for the **allme SDK examples** — all three scenario
+families (identity, company-data, contract flows) in one portal (#494). About 90%
+of each example's logic is this frontend; each SDK example is a thin backend that
 implements the demo-backend contract in [`CONTRACT.md`](./CONTRACT.md). That
 shared contract is what makes the six SDK examples strictly comparable — an
 example test suite in the literal sense.
@@ -32,8 +33,20 @@ npm run build
 ```
 
 Produces `dist/`, a self-contained static bundle. `dist/contract.json`
-(`{"contractVersion": 1}`) is emitted into the bundle root — the backend reads
+(`{"contractVersion": 3}`) is emitted into the bundle root — the backend reads
 it at startup and refuses a version it does not implement.
+
+## Styling (#496)
+
+The UI uses the **allus portal's stack** so the examples and the portal look like
+one product: Tailwind (`tailwindcss` + `postcss` + `autoprefixer`) and
+`lucide-react` icons. `tailwind.config.js`, `postcss.config.js` and the brand-token
+block at the top of `src/index.css` are **copied from the portal verbatim** rather
+than re-derived — if the portal's brand moves, re-copy those three, don't hand-edit
+them. Shared class strings (card, button, input, badge, headings) live in
+[`src/ui.js`](./src/ui.js); use them instead of repeating utility strings, so the
+examples keep one visual vocabulary. Dark mode is class-based (the portal's
+setting) and `src/theme.js` mirrors the OS preference onto the root element.
 
 ## Release procedure (run by the reviewer, not the builder)
 
@@ -41,7 +54,7 @@ Build, package the bundle as the release asset, cut the tag, then record the
 tarball checksum for consumers:
 
 ```
-npm run build && tar -czf dist.tar.gz -C dist . && gh release create v0.1.0 dist.tar.gz --title v0.1.0 --notes "Identity example frontend — contract v1"
+npm run build && tar -czf dist.tar.gz -C dist . && gh release create v0.5.0 dist.tar.gz --title v0.5.0 --notes "Example suite frontend — contract v3"
 shasum -a 256 dist.tar.gz
 ```
 
@@ -50,7 +63,7 @@ shasum -a 256 dist.tar.gz
 what each consuming SDK example records in its `frontend.lock`:
 
 ```json
-{ "tag": "v0.1.0", "sha256": "<the sha256 printed above>" }
+{ "tag": "v0.5.0", "sha256": "<the sha256 printed above>" }
 ```
 
 On first run an SDK example downloads exactly that release asset, verifies the
@@ -63,6 +76,6 @@ bumps `contractVersion` in the bundle AND the release tag.** The backend
 compares the bundle's `contract.json` against the version it implements and
 refuses a mismatch (printing both versions and the pin-bump pointer); a checksum
 mismatch refuses the same way. Because each SDK example pins its own tag +
-sha256, a contract bump is an explicit, **per-example** pin bump — every other
-example keeps fetching its own pinned release, which stays downloadable
-indefinitely.
+sha256, a bump is an explicit pin bump — one `frontend.lock` per SDK since one
+backend serves every family (#494) — and every SDK that has not bumped keeps
+fetching its own pinned release, which stays downloadable indefinitely.

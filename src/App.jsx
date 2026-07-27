@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import s from './brand.module.css';
+import { AlertCircle, Loader2, Trash2 } from 'lucide-react';
+import * as ui from './ui.js';
 import ScenarioGrid from './components/ScenarioGrid.jsx';
 import ScenarioDetail from './components/ScenarioDetail.jsx';
 import { SCENARIOS_BY_ID } from './data/scenarios.js';
@@ -121,39 +122,53 @@ export default function App() {
   const selected = selectedId != null ? scenariosById[selectedId] : null;
 
   return (
-    <div className={s.app}>
-      <header className={s.header}>
-        <div className={s.brandMark}>
-          <div className={s.logo}>a</div>
-          <div>
-            <h1 className={s.title}>allme SDK example test suite</h1>
-            <p className={s.subtitle}>The shared example suite — every scenario the backend exposes, through an SDK</p>
+    <div className="min-h-screen bg-surface-alt">
+      <header className="border-b border-line bg-surface">
+        <div className="mx-auto max-w-5xl px-6 py-5 flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center font-semibold text-lg shrink-0">a</div>
+            <div>
+              <h1 className={ui.h1}>allme SDK example test suite</h1>
+              <p className={ui.sub}>The shared example suite — every scenario the backend exposes, through an SDK</p>
+            </div>
           </div>
+          {meta && (
+            <div className="flex items-center gap-2">
+              <span className={ui.badgeBrand}>{meta.sdk}{meta.sdkVersion ? ` ${meta.sdkVersion}` : ''}</span>
+              <span className={ui.badgeNeutral}>contract v{meta.contractVersion}</span>
+            </div>
+          )}
         </div>
-        {meta && (
-          <div className={s.headerMeta}>
-            <div>SDK: <code>{meta.sdk}{meta.sdkVersion ? ` ${meta.sdkVersion}` : ''}</code></div>
-            <div>contract v<code>{meta.contractVersion}</code></div>
-          </div>
-        )}
       </header>
 
-      <main className={s.main}>
+      <main className="mx-auto max-w-5xl px-6 py-8 space-y-4">
         {metaError && (
-          <div className={s.errorBox}>
+          <div className={ui.errorBox}>
+            <AlertCircle className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
             Could not load the demo backend: {metaError}
           </div>
         )}
 
-        {clearError && <div className={s.errorBox}>{clearError}</div>}
+        {clearError && (
+          <div className={ui.errorBox}>
+            <AlertCircle className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+            {clearError}
+          </div>
+        )}
 
-        {!metaError && !meta && <div className={s.empty}>Loading scenarios…</div>}
+        {!metaError && !meta && (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading scenarios…
+          </div>
+        )}
 
         {meta && !selected && (
           <>
-            <div className={s.toolbar}>
-              <h2 className={s.sectionTitle}>Scenarios</h2>
-              <button type="button" className={`${s.btn} ${s.btnDanger}`} onClick={clearEverything}>
+            <div className="flex items-center justify-between gap-4">
+              <h2 className={ui.h2}>Scenarios</h2>
+              <button type="button" className={ui.btnDanger} onClick={clearEverything}>
+                <Trash2 className="w-4 h-4" />
                 Clear all
               </button>
             </div>

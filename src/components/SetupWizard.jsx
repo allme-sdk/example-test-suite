@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import s from '../brand.module.css';
+import { Check, ChevronDown, ChevronRight, FileKey, Save, Upload, X, AlertCircle } from 'lucide-react';
+import * as ui from '../ui.js';
 
 function PemField({ field, value, onChange }) {
   const inputRef = useRef(null);
@@ -17,40 +18,43 @@ function PemField({ field, value, onChange }) {
   }
 
   return (
-    <div className={s.field}>
-      <label className={s.fieldLabel}>{field.label}</label>
-      <div className={s.fileRow}>
-        <button type="button" className={s.btn} onClick={() => inputRef.current && inputRef.current.click()}>
+    <div>
+      <label className={ui.label}>{field.label}</label>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" className={ui.btn} onClick={() => inputRef.current && inputRef.current.click()}>
+          <Upload className="w-4 h-4" />
           {loaded ? 'Replace PEM file…' : 'Choose PEM file…'}
         </button>
         <input
           ref={inputRef}
           type="file"
           accept=".pem,.key,application/x-pem-file,text/plain"
-          style={{ display: 'none' }}
+          className="hidden"
           onChange={onPick}
         />
         {loaded ? (
-          <span className={`${s.fileState} ${s.fileLoaded}`}>
+          <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-300">
+            <FileKey className="w-3.5 h-3.5" />
             PEM loaded{fileName ? ` (${fileName})` : ''}
           </span>
         ) : (
-          <span className={s.fileState}>No file chosen</span>
+          <span className={ui.faint}>No file chosen</span>
         )}
         {loaded && (
           <button
             type="button"
-            className={`${s.btn} ${s.btnGhost}`}
+            className={ui.btnGhost}
             onClick={() => {
               setFileName('');
               onChange('');
             }}
           >
+            <X className="w-3.5 h-3.5" />
             Remove
           </button>
         )}
       </div>
-      {field.hint && <span className={s.fieldHint}>{field.hint}</span>}
+      {field.hint && <span className={ui.hint}>{field.hint}</span>}
     </div>
   );
 }
@@ -58,10 +62,10 @@ function PemField({ field, value, onChange }) {
 function TextField({ field, value, onChange, invalid }) {
   const type = field.type === 'secret' || field.type === 'passphrase' ? 'password' : 'text';
   return (
-    <div className={s.field}>
-      <label className={s.fieldLabel}>{field.label}</label>
+    <div>
+      <label className={ui.label}>{field.label}</label>
       <input
-        className={`${s.input} ${invalid ? s.inputInvalid : ''}`}
+        className={`${ui.input} ${invalid ? ui.inputInvalid : ''}`}
         type={type}
         value={value || ''}
         placeholder={field.default || ''}
@@ -69,17 +73,17 @@ function TextField({ field, value, onChange, invalid }) {
         autoComplete="off"
         spellCheck={false}
       />
-      {field.hint && <span className={s.fieldHint}>{field.hint}</span>}
+      {field.hint && <span className={ui.hint}>{field.hint}</span>}
     </div>
   );
 }
 
 function SelectField({ field, value, onChange, invalid }) {
   return (
-    <div className={s.field}>
-      <label className={s.fieldLabel}>{field.label}</label>
+    <div>
+      <label className={ui.label}>{field.label}</label>
       <select
-        className={`${s.input} ${invalid ? s.inputInvalid : ''}`}
+        className={`${ui.input} ${invalid ? ui.inputInvalid : ''}`}
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -88,7 +92,7 @@ function SelectField({ field, value, onChange, invalid }) {
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
       </select>
-      {field.hint && <span className={s.fieldHint}>{field.hint}</span>}
+      {field.hint && <span className={ui.hint}>{field.hint}</span>}
     </div>
   );
 }
@@ -123,18 +127,20 @@ export default function SetupWizard({
   const advanced = scenario.fields.filter((f) => f.advanced);
 
   return (
-    <div className={s.block}>
-      <h4 className={s.blockTitle}>Setup checklist</h4>
-      <ol className={s.checklist}>
-        {scenario.checklist.map((line, i) => (
-          <li key={i}>{line}</li>
-        ))}
-      </ol>
+    <div className={`${ui.block} space-y-4`}>
+      <div>
+        <h4 className={ui.h4}>Setup checklist</h4>
+        <ol className="mt-2 space-y-1.5 list-decimal list-inside text-sm text-body marker:text-faint">
+          {scenario.checklist.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ol>
+      </div>
 
       {scenario.prerequisites && scenario.prerequisites.length > 0 && (
-        <div className={s.prereq}>
-          <strong>Prerequisites:</strong>
-          <ul className={s.checklist}>
+        <div className={ui.noteBox}>
+          <strong className="text-heading">Prerequisites:</strong>
+          <ul className="mt-1 space-y-1 list-disc list-inside marker:text-faint">
             {scenario.prerequisites.map((line, i) => (
               <li key={i}>{line}</li>
             ))}
@@ -143,43 +149,56 @@ export default function SetupWizard({
       )}
 
       {required.length > 0 && (
-        <>
-          <h4 className={s.blockTitle}>Inputs</h4>
+        <div className="space-y-3">
+          <h4 className={ui.h4}>Inputs</h4>
           {required.map((f) => renderField(f, values, setValue, showInvalid))}
-        </>
+        </div>
       )}
 
       {advanced.length > 0 && (
-        <>
-          <button type="button" className={s.advToggle} onClick={() => setShowAdvanced((v) => !v)}>
-            {showAdvanced ? '▾ Advanced (target platform)' : '▸ Advanced (target platform)'}
+        <div className="space-y-3">
+          <button type="button" className={ui.btnGhost} onClick={() => setShowAdvanced((v) => !v)}>
+            {showAdvanced ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            Advanced (target platform)
           </button>
           {showAdvanced && advanced.map((f) => renderField(f, values, setValue, showInvalid))}
-        </>
+        </div>
       )}
 
       {!isGuide && (
-        <div className={s.fileRow} style={{ marginTop: 16 }}>
+        <div className="flex flex-wrap items-center gap-3 pt-1">
           <button
             type="button"
-            className={`${s.btn} ${s.btnPrimary}`}
+            className={ui.btnPrimary}
             disabled={!canSave || saving}
             onClick={onSave}
           >
+            <Save className="w-4 h-4" />
             {saving ? 'Saving…' : configPath ? 'Re-save settings' : 'Save settings'}
           </button>
           {configPath ? (
-            <span className={`${s.fileState} ${s.fileLoaded}`}>
-              Saved ✓ — config written to <code>{configPath}</code> (open it to read the real SDK config)
+            <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-300">
+              <Check className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                Saved — config written to <code className={ui.code}>{configPath}</code> (open it to read
+                the real SDK config)
+              </span>
             </span>
           ) : (
-            <span className={s.fileState}>
-              {canSave ? 'Save writes the SDK config file the run executes off.' : 'Complete the required inputs to save.'}
+            <span className={ui.faint}>
+              {canSave
+                ? 'Save writes the SDK config file the run executes off.'
+                : 'Complete the required inputs to save.'}
             </span>
           )}
         </div>
       )}
-      {!isGuide && saveError && <div className={s.errorBox}>Could not save settings: {saveError}</div>}
+      {!isGuide && saveError && (
+        <div className={ui.errorBox}>
+          <AlertCircle className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+          Could not save settings: {saveError}
+        </div>
+      )}
     </div>
   );
 }

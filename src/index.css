@@ -1,0 +1,93 @@
+/*
+ * The example test suite's stylesheet.
+ *
+ * #496: the brand tokens below are CARRIED VERBATIM from the allus portal
+ * (`allus/src/index.css`) rather than re-derived, so the portal and the examples
+ * cannot drift apart visually. `tailwind.config.js` and `postcss.config.js` are
+ * likewise byte-identical copies of the portal's. Everything above the token
+ * block is Tailwind; component styling lives in the JSX via the shared class
+ * vocabulary in `src/ui.js`.
+ *
+ * Dark mode is `class`-based (the portal's setting). The suite has no theme
+ * picker and never had one, so `src/theme.js` mirrors the OS preference onto the
+ * root element — the same behaviour the old CSS module got from a
+ * prefers-color-scheme media query, now expressed the portal's way.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-brand-50: 240 253 250;   /* teal-50 */
+  --color-brand-100: 204 251 241;  /* teal-100 */
+  --color-brand-200: 153 246 228;  /* teal-200 */
+  --color-brand-300: 94 234 212;   /* teal-300 */
+  --color-brand-400: 45 212 191;   /* teal-400 */
+  --color-brand-500: 20 184 166;   /* teal-500 */
+  --color-brand-600: 13 148 136;   /* teal-600 (#0d9488) */
+  --color-brand-700: 15 118 110;   /* teal-700 */
+
+  --color-accent-500: 6 182 212;   /* cyan-500 (#06b6d4) */
+  --color-accent-600: 34 211 238;  /* cyan-400 (#22d3ee) */
+
+  /* Semantic surface tokens — light */
+  --color-surface: 255 255 255;       /* white */
+  --color-surface-alt: 249 250 251;   /* gray-50 */
+  --color-surface-inset: 243 244 246; /* gray-100 */
+
+  /* Semantic text tokens — light */
+  --color-text-heading: 17 24 39;     /* gray-900 */
+  --color-text-body: 55 65 81;        /* gray-700 */
+  --color-text-secondary: 75 85 99;   /* gray-600 */
+  --color-text-muted: 107 114 128;    /* gray-500 */
+  --color-text-faint: 156 163 175;    /* gray-400 */
+
+  /* Semantic border tokens — light */
+  --color-border: 229 231 235;        /* gray-200 */
+  --color-border-subtle: 243 244 246; /* gray-100 */
+
+  /* Semantic interactive tokens — light */
+  --color-hover: 249 250 251;         /* gray-50 */
+}
+
+.dark {
+  --color-surface: 30 41 59;          /* slate-800 */
+  --color-surface-alt: 15 23 42;      /* slate-900 */
+  --color-surface-inset: 51 65 85;    /* slate-700 */
+
+  --color-text-heading: 248 250 252;  /* slate-50 */
+  --color-text-body: 226 232 240;     /* slate-200 */
+  --color-text-secondary: 203 213 225;/* slate-300 */
+  --color-text-muted: 148 163 184;    /* slate-400 */
+  --color-text-faint: 100 116 139;    /* slate-500 */
+
+  --color-border: 51 65 85;           /* slate-700 */
+  --color-border-subtle: 51 65 85;    /* slate-700 */
+
+  --color-hover: 51 65 85;            /* slate-700 */
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+  }
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+}
