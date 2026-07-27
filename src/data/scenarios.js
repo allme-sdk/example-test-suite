@@ -431,3 +431,12 @@ export function isScenarioReady(scenario, values) {
     return typeof v === 'string' ? v.trim().length > 0 : Boolean(v);
   });
 }
+
+// The one classification behind every "where am I" signal in the UI (#500): the
+// card badge in the grid AND the icon beside the scenario in the left nav read
+// this, so a scenario can never look ready in one place and not in the other.
+// `guide` | `ready` | `setup`.
+export function scenarioStatus(scenario, values) {
+  if (scenario.kind === 'guide') return 'guide';
+  return isScenarioReady(scenario, values) ? 'ready' : 'setup';
+}

@@ -48,22 +48,61 @@ them. Shared class strings (card, button, input, badge, headings) live in
 examples keep one visual vocabulary. Dark mode is class-based (the portal's
 setting) and `src/theme.js` mirrors the OS preference onto the root element.
 
+## Shell and navigation (#500)
+
+The page has the **allus portal's shell**: a persistent left sidebar
+([`src/components/Sidebar.jsx`](./src/components/Sidebar.jsx)) beside the content
+pane, following `allus/src/Layout.jsx` — the same fixed `w-64` aside from `lg` up,
+the same slide-over drawer below it, the same collapsible nav group and active-item
+styling, and a bordered footer that carries the SDK / contract badges and the global
+**Clear all**.
+
+The nav lists the **three scenario families** (`Identity`, `Company data`,
+`Contract flows`), each expanding to its own scenarios; picking a family shows that
+family's cards, picking a scenario opens it. Families and their titles/blurbs come
+from `FAMILIES` / `familyOf(id)` in [`src/data/scenarios.js`](./src/data/scenarios.js)
+— there is deliberately no second nav list to hand-maintain, and a family the
+backend's `/api/meta` does not list simply does not appear. The Ready / Needs setup
+/ Guide classification behind both the card badge and the nav icon is
+`scenarioStatus()` in the same file, rendered by
+[`src/components/ScenarioStatus.jsx`](./src/components/ScenarioStatus.jsx).
+
+**There is no router, by decision (#500).** `CONTRACT.md` fixes the OAuth callback
+as a 302 to `/?scenario={id}&run={runId}` and all six backends implement it, so
+adding `react-router` would have dragged a contract change into a shell change.
+Selection is component state: the consequence, accepted knowingly, is that families
+and scenarios are **not** linkable and not back-button-able. The in-app back button
+returns to the open family's card list.
+
 ## Release procedure (run by the reviewer, not the builder)
 
 Build, package the bundle as the release asset, cut the tag, then record the
 tarball checksum for consumers:
 
 ```
-npm run build && tar -czf dist.tar.gz -C dist . && gh release create v0.5.0 dist.tar.gz --title v0.5.0 --notes "Example suite frontend — contract v3"
+npm ci && npm run build
+tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf - -C dist . | gzip -n -9 > dist.tar.gz
+gh release create v0.6.0 dist.tar.gz --title v0.6.0 --notes "Example suite frontend — contract v3"
 shasum -a 256 dist.tar.gz
 ```
+
+**The packaging flags are load-bearing, not tidiness (#500).** Vite's output is
+already deterministic (asset names are content hashes), but a plain
+`tar -czf dist.tar.gz -C dist .` also records each file's mtime and the gzip
+header's timestamp, so two identical builds produce two different sha256s. The
+pin the six SDKs carry is that sha256 — so a re-cut of a byte-identical bundle
+used to invalidate all six `frontend.lock` files, and #496 had to ship the
+warning "the tarball must not be re-cut". `--sort=name --mtime --owner --group
+--numeric-owner` plus `gzip -n` remove every non-content input, which makes the
+tarball a pure function of `dist/`: whoever cuts it, whenever, the sha matches
+the pins. Verify with `shasum -a 256` after a clean rebuild before publishing.
 
 `gh release create` takes asset paths as **positional arguments** (hence
 `dist.tar.gz` after the tag). The printed `shasum -a 256 dist.tar.gz` value is
 what each consuming SDK example records in its `frontend.lock`:
 
 ```json
-{ "tag": "v0.5.0", "sha256": "<the sha256 printed above>" }
+{ "tag": "v0.6.0", "sha256": "<the sha256 printed above>" }
 ```
 
 On first run an SDK example downloads exactly that release asset, verifies the

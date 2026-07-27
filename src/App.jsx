@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Loader2, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, Loader2, Menu } from 'lucide-react';
 import * as ui from './ui.js';
+import Sidebar from './components/Sidebar.jsx';
 import ScenarioGrid from './components/ScenarioGrid.jsx';
 import ScenarioDetail from './components/ScenarioDetail.jsx';
-import { SCENARIOS_BY_ID } from './data/scenarios.js';
+import { SCENARIOS_BY_ID, FAMILIES, familyOf } from './data/scenarios.js';
 import { getMeta, clearScenarioBackend, clearAllBackend } from './lib/api.js';
 import { loadValues, saveValues, clearValues, clearAllValues } from './lib/storage.js';
 
@@ -25,6 +26,8 @@ export default function App() {
   const [metaError, setMetaError] = useState(null);
   const [valuesById, setValuesById] = useState({});
   const [selectedId, setSelectedId] = useState(null);
+  const [activeFamily, setActiveFamily] = useState(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [resume] = useState(readResume);
   const [clearError, setClearError] = useState(null);
 
@@ -51,6 +54,18 @@ export default function App() {
     [scenarios]
   );
 
+  // The left nav's sections (#500). Derived from FAMILIES + familyOf — never a
+  // second hand-maintained list — and a family this backend's /api/meta does not
+  // list is simply absent, so a single-family backend still renders correctly.
+  const families = useMemo(
+    () =>
+      FAMILIES.map((f) => ({
+        ...f,
+        items: scenarios.filter((sc) => familyOf(sc.id) === f.key)
+      })).filter((f) => f.items.length > 0),
+    [scenarios]
+  );
+
   useEffect(() => {
     let alive = true;
     getMeta()
@@ -69,12 +84,37 @@ export default function App() {
     };
   }, []);
 
+  // Land on the first family the backend actually serves, once meta is in. Guarded
+  // on `activeFamily == null` so it seeds once and never fights a user selection —
+  // and it re-seeds if the current family disappears from a later meta.
+  useEffect(() => {
+    if (!families.length) return;
+    if (activeFamily == null || !families.some((f) => f.key === activeFamily)) {
+      setActiveFamily(families[0].key);
+    }
+  }, [families, activeFamily]);
+
+  // Selecting a scenario always brings its family along, so the left nav's expanded
+  // group is the one holding the active item — for the grid, for the guide card's
+  // cross-links, and for the /callback resume below.
+  const selectScenario = useCallback((id) => {
+    setSelectedId(id);
+    setActiveFamily(familyOf(id));
+    setMobileOpen(false);
+  }, []);
+
+  const selectFamily = useCallback((key) => {
+    setActiveFamily(key);
+    setSelectedId(null);
+    setMobileOpen(false);
+  }, []);
+
   // Once meta is loaded, honor a resume target (select the scenario).
   useEffect(() => {
     if (resume && scenarios.length && scenariosById[resume.scenarioId]) {
-      setSelectedId(resume.scenarioId);
+      selectScenario(resume.scenarioId);
     }
-  }, [resume, scenarios, scenariosById]);
+  }, [resume, scenarios, scenariosById, selectScenario]);
 
   function setValue(id, key, val) {
     setValuesById((prev) => {
@@ -102,6 +142,7 @@ export default function App() {
   }
 
   async function clearEverything() {
+    setMobileOpen(false);
     try {
       await clearAllBackend();
     } catch (e) {
@@ -120,81 +161,107 @@ export default function App() {
   }
 
   const selected = selectedId != null ? scenariosById[selectedId] : null;
+  const family = families.find((f) => f.key === activeFamily) || null;
 
+  const sidebar = (
+    <Sidebar
+      families={families}
+      activeFamily={activeFamily}
+      selectedId={selectedId}
+      valuesById={valuesById}
+      onSelectFamily={selectFamily}
+      onSelectScenario={selectScenario}
+      meta={meta}
+      onClearAll={clearEverything}
+    />
+  );
+
+  // Shell shape follows `allus/src/Layout.jsx:174-197`: a fixed 16rem sidebar from
+  // `lg` up, a slide-over drawer below it, and the content column offset by
+  // `lg:pl-64`.
   return (
-    <div className="min-h-screen bg-surface-alt">
-      <header className="border-b border-line bg-surface">
-        <div className="mx-auto max-w-5xl px-6 py-5 flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center font-semibold text-lg shrink-0">a</div>
-            <div>
-              <h1 className={ui.h1}>allme SDK example test suite</h1>
-              <p className={ui.sub}>The shared example suite — every scenario the backend exposes, through an SDK</p>
-            </div>
-          </div>
-          {meta && (
-            <div className="flex items-center gap-2">
-              <span className={ui.badgeBrand}>{meta.sdk}{meta.sdkVersion ? ` ${meta.sdkVersion}` : ''}</span>
-              <span className={ui.badgeNeutral}>contract v{meta.contractVersion}</span>
+    <div className="min-h-screen bg-surface-alt text-body">
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 bg-surface border-r border-line flex-col">
+        {sidebar}
+      </aside>
+
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 w-64 bg-surface border-r border-line">
+            {sidebar}
+          </aside>
+        </div>
+      )}
+
+      <div className="lg:pl-64">
+        <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 h-14 bg-surface/80 backdrop-blur border-b border-line">
+          <button
+            type="button"
+            className="p-1.5 rounded-lg hover:bg-hover"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="text-sm font-semibold text-heading">allme SDK examples</span>
+        </header>
+
+        <main className="max-w-5xl px-6 py-8 space-y-4">
+          {metaError && (
+            <div className={ui.errorBox}>
+              <AlertCircle className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+              Could not load the demo backend: {metaError}
             </div>
           )}
-        </div>
-      </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-8 space-y-4">
-        {metaError && (
-          <div className={ui.errorBox}>
-            <AlertCircle className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
-            Could not load the demo backend: {metaError}
-          </div>
-        )}
-
-        {clearError && (
-          <div className={ui.errorBox}>
-            <AlertCircle className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
-            {clearError}
-          </div>
-        )}
-
-        {!metaError && !meta && (
-          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Loading scenarios…
-          </div>
-        )}
-
-        {meta && !selected && (
-          <>
-            <div className="flex items-center justify-between gap-4">
-              <h2 className={ui.h2}>Scenarios</h2>
-              <button type="button" className={ui.btnDanger} onClick={clearEverything}>
-                <Trash2 className="w-4 h-4" />
-                Clear all
-              </button>
+          {clearError && (
+            <div className={ui.errorBox}>
+              <AlertCircle className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+              {clearError}
             </div>
-            <ScenarioGrid
-              scenarios={scenarios}
-              valuesById={valuesById}
-              onSelect={setSelectedId}
-            />
-          </>
-        )}
+          )}
 
-        {meta && selected && (
-          <ScenarioDetail
-            key={selected.id}
-            scenario={selected}
-            isGuide={selected.kind === 'guide'}
-            values={valuesById[selected.id] || {}}
-            setValue={(key, val) => setValue(selected.id, key, val)}
-            onClear={() => clearScenario(selected.id)}
-            onBack={() => setSelectedId(null)}
-            onNavigate={(id) => setSelectedId(id)}
-            scenariosById={scenariosById}
-            resumeRunId={resume && resume.scenarioId === selected.id ? resume.runId : null}
-          />
-        )}
-      </main>
+          {!metaError && !meta && (
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading scenarios…
+            </div>
+          )}
+
+          {meta && !selected && (
+            <>
+              <div>
+                <h1 className={ui.h1}>{family ? family.title : 'Scenarios'}</h1>
+                <p className={`${ui.sub} mt-1`}>
+                  {family ? family.blurb : 'Every scenario the backend exposes, through an SDK.'}
+                </p>
+              </div>
+              <ScenarioGrid
+                scenarios={family ? family.items : scenarios}
+                valuesById={valuesById}
+                onSelect={selectScenario}
+              />
+            </>
+          )}
+
+          {meta && selected && (
+            <ScenarioDetail
+              key={selected.id}
+              scenario={selected}
+              isGuide={selected.kind === 'guide'}
+              values={valuesById[selected.id] || {}}
+              setValue={(key, val) => setValue(selected.id, key, val)}
+              onClear={() => clearScenario(selected.id)}
+              onBack={() => setSelectedId(null)}
+              backLabel={family ? family.title : 'All scenarios'}
+              onNavigate={selectScenario}
+              scenariosById={scenariosById}
+              resumeRunId={resume && resume.scenarioId === selected.id ? resume.runId : null}
+            />
+          )}
+        </main>
+      </div>
     </div>
   );
 }

@@ -25,6 +25,7 @@ export default function ScenarioDetail({
   setValue,
   onClear,
   onBack,
+  backLabel = 'All scenarios',
   onNavigate,
   scenariosById,
   resumeRunId
@@ -59,9 +60,11 @@ export default function ScenarioDetail({
 
   return (
     <div className="space-y-3">
+      {/* Back lands on the family the left nav currently has open (#500), so the
+          label names that family rather than the removed all-families page. */}
       <button type="button" className={ui.btnGhost} onClick={onBack}>
         <ArrowLeft className="w-4 h-4" />
-        All scenarios
+        {backLabel}
       </button>
       <div className={ui.panel}>
         <div className="flex items-start justify-between gap-4 pb-4 border-b border-line">
