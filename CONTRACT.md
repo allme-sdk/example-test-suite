@@ -166,6 +166,69 @@ at it). Global clear wipes all run files and the entire `.runtime/config/` tree
 (configs, metas, keys). Single-worker server (below) → no concurrent mutation to
 guard; a plain unlink suffices.
 
+## The failure envelope — `error` carries the REASON (#583)
+
+Any non-2xx a backend answers with, other than the two token-only refusals below,
+carries:
+
+```json
+{"error": "<token> — <reason>", "message": "<reason>"}
+```
+
+`<token>` is the machine token (`server_error`, `start_failed`, `identity_error`,
+`connection_error`, `trigger_error`, `no_origin`) and `<reason>` is the sentence
+that says what actually went wrong. **Both, in `error`, in that order** — because
+this repo's client (`src/lib/api.js`) raises `body.error` VERBATIM and reads no
+other key, so anything a backend puts only in `message` never reaches the
+developer. A bare token would arrive as one uninformative word, and a response
+with no body at all falls back to `start failed ({id})`, which reads like an error
+code and names nothing: that is exactly how #583 was reported. `message` keeps the
+bare reason for a programmatic reader.
+
+Two refusals stay **token-only**, because the client dispatches on their STATUS
+before it looks at the body:
+
+| Refusal | Why it keeps a bare token |
+|---|---|
+| `409 {"error":"not_configured"}` | `startScenario`/`enrollScenario` map the 409 to the Save prompt without reading the body |
+| `404 {"error":"not_found"}` | `getRun` maps the 404 to `null`; unknown ids are not a reportable reason |
+
+**Every backend guards its OUTERMOST boundary**, so an unexpected throw becomes
+this envelope rather than whatever the framework would emit — never a `try` per
+handler (standards §1); the rendering itself is ONE helper per backend, so no
+path can answer in a different shape.
+
+Two properties make "outermost" literal rather than approximate:
+
+- **Request PREPROCESSING is inside the guard**, not above it. Runtime setup and
+  target parsing can fail before handler dispatch —
+  `POST /api/scenarios/5/start%` reaches Node verbatim and `decodeURIComponent`
+  raises `URIError: URI malformed` — so the
+  guard opens before the first of them and, in Go, the deferred `recover` is
+  registered before any request work in `ServeHTTP`.
+- **Where the host framework answers with NOTHING, the launcher carries a
+  last-resort net through the same helper.** Node's `createServer` callback and
+  Python's `BaseHTTPRequestHandler` both sit outside the router: an escaping
+  error there closes the connection with no response at all (measured in Python:
+  `RemoteDisconnected: Remote end closed connection without response`), which the
+  suite renders as its `start failed ({id})` fallback. Those nets call
+  `sendFailure` / `failure_response`, so a process still has exactly one
+  envelope. Java, Go and C# need no second net — their outermost guard already
+  is the framework's entry point.
+
+PHP additionally registers a shutdown handler — as its first act, before any
+other statement can fail — because a PHP **fatal** error is not a `\Throwable`
+and unwinds straight past `catch (\Throwable)` (#583: a class-compatibility
+failure raised while autoloading a JOSE algorithm produced a bare 500 with an
+empty `text/html` body).
+
+A failure raised **after the first byte is on the wire** (a static file is
+streamed) cannot be replaced with the JSON envelope and must never be re-written
+over. TypeScript's shared helper reports that case on stderr because routing the
+launcher through it made the case newly reachable there. PHP, Java, and Go keep
+their existing framework handling; this local-demo contract does not require
+cross-framework recovery after output has begun.
+
 ## Backend state — single-worker, idempotent (no burn-on-read, no locks)
 
 PHP's built-in server runs as ONE worker (do NOT set `PHP_CLI_SERVER_WORKERS`),
