@@ -36,6 +36,57 @@ Produces `dist/`, a self-contained static bundle. `dist/contract.json`
 (`{"contractVersion": 3}`) is emitted into the bundle root — the backend reads
 it at startup and refuses a version it does not implement.
 
+`build` is preceded by `npm run check` (the `prebuild` script), so a release
+cannot be cut with an unexplained portal control — see below.
+
+## Setup data: `fields` and `portalSetup` (#557)
+
+Every scenario declares two halves of its setup, and both are **complete by
+construction** rather than by memory:
+
+- **`fields`** — the inputs THIS app renders. The setup form is generated from
+  them, so an input cannot exist without its `hint`.
+- **`portalSetup`** — the controls the reader must set in the **allus portal**,
+  which this app cannot render and therefore used to describe in free prose.
+  `PORTAL_FORMS` in `src/data/scenarios.js` is the catalog of every portal form
+  the suite sends a reader to and **every control that form actually renders**
+  (read off the portal source); a scenario supplies one answer per control.
+
+`components/PortalSetup.jsx` renders the table by iterating the **form's**
+control list, not the scenario's answers, so a control nobody answered appears as
+a loud "Not specified" row instead of being silently absent.
+`scripts/check-portal-setup.mjs` reports the same gaps at build time:
+
+```
+npm run check
+```
+
+**The declaration itself is mandatory.** Every scenario resolves, via
+`portalSetupDeclaration()`, to exactly one of three states:
+
+| state | what it means |
+|---|---|
+| **forms** | `portalSetup: [{ form, settings }, …]` — a non-empty list to explain. |
+| **none** | `portalSetup: noPortalSetup('<why>')` — an explicit, reasoned opt-out. |
+| **undeclared** | anything else: absent, `null`, `[]`, `{}`, a wrong type, or a `noPortalSetup()` with no reason. **This fails.** |
+
+An earlier version iterated `scenario.portalSetup || []`, so *undeclared* produced
+zero gaps — the check exited 0 with a smaller scenario count and the panel rendered
+nothing, which let a future edit silently undo the whole point. There is now no
+empty value that reads as complete, and the success line states the total (`All 14
+scenarios declared.`) so the count cannot shrink quietly. Every scenario today
+lists forms; the opt-out exists so a future portal-free scenario has to **say** so.
+
+**State the intended value for every control, including the ones to leave
+alone.** "Leave it empty" and "it does not matter here, because …" are answers;
+silence is not. That rule is what #557 was filed over: scenario 1 explained two of
+the OAuth-app form's seven controls, and the two OIDC scenarios explained none of
+the one control that decides whether they display any claims at all.
+
+**When a portal form changes, edit its entry in `PORTAL_FORMS` first.** Every
+scenario that uses that form then fails `npm run check` until it says what to do
+with the new control — which is the whole point.
+
 ## Styling (#496)
 
 The UI uses the **allus portal's stack** so the examples and the portal look like
@@ -82,7 +133,7 @@ tarball checksum for consumers:
 ```
 npm ci && npm run build
 tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf - -C dist . | gzip -n -9 > dist.tar.gz
-gh release create v0.6.1 dist.tar.gz --title v0.6.1 --notes "Example suite frontend — contract v3"
+gh release create v0.6.2 dist.tar.gz --title v0.6.2 --notes "Example suite frontend — contract v3"
 shasum -a 256 dist.tar.gz
 ```
 
@@ -102,7 +153,7 @@ the pins. Verify with `shasum -a 256` after a clean rebuild before publishing.
 what each consuming SDK example records in its `frontend.lock`:
 
 ```json
-{ "tag": "v0.6.1", "sha256": "<the sha256 printed above>" }
+{ "tag": "v0.6.2", "sha256": "<the sha256 printed above>" }
 ```
 
 On first run an SDK example downloads exactly that release asset, verifies the

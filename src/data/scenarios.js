@@ -43,6 +43,165 @@ const FLOW_ADVANCED = [ADVANCED[0]];
 const PHONE_PREREQ =
   'A physical phone with the allme app, signed in as the demo person. It reaches the deployed platform naturally.';
 
+// ── The portal half of setup, per control (#557) ──────────────────────────────
+// A scenario's own inputs are complete BY CONSTRUCTION: `fields` below IS the form the
+// suite renders, so an input cannot exist without its `hint`. The portal half had no such
+// tie — `checklist` is free prose about forms in another product, so it drifted and
+// under-specified with nothing to catch it. #557: scenario 1 named two of the OAuth-app
+// form's SEVEN controls, and the two OIDC scenarios named none of the one control that
+// decides whether they show any claims at all.
+//
+// So PORTAL_FORMS is the CATALOG — every control each portal form actually renders, read
+// off `allus/src` — and a scenario declares `portalSetup: [{ form, settings }]` giving the
+// intended value for EVERY control of every form it sends the reader to, including the
+// ones to leave alone. "Leave it empty" and "it does not matter here, because …" are
+// answers; silence is not. `portalSetupGaps()` reports what a scenario omitted (or named
+// and the form does not have); `PortalSetup.jsx` renders a gap as a loud row and
+// `npm run check` — which `prebuild` runs — exits non-zero, so a release cannot ship an
+// unexplained control.
+//
+// When a portal form gains or loses a control, edit its entry here: every scenario that
+// uses the form then fails the check until it says what to do with it.
+export const PORTAL_FORMS = {
+  'oauth-app': {
+    title: 'Register an OAuth app',
+    path: 'allus portal → Settings → OAuth apps → the “Register app” form',
+    controls: [
+      { key: 'name', label: 'App name (shown to the person)' },
+      { key: 'redirectUris', label: 'Redirect URIs (one per line)' },
+      { key: 'service', label: 'Service — “No service (sign-in / one-time only)” or one of yours' },
+      { key: 'confidential', label: 'Confidential (server-side secret)' },
+      { key: 'require2fa', label: 'Require 2FA' },
+      { key: 'claimsDelivery', label: 'Claims in the id_token — Encrypted / Plaintext' },
+      { key: 'claimConfig', label: 'Claim requirements (standard scopes) — Required / Verified only / Stay-connected field, per claim' }
+    ]
+  },
+  'oauth-app-edit': {
+    title: 'Edit an OAuth app',
+    path: 'allus portal → Settings → OAuth apps → the app’s pencil button',
+    // The edit panel is the register form MINUS Confidential: public-vs-confidential is
+    // fixed at registration (the portal's `EditApp` in `account/OAuthApps.jsx` renders no
+    // such control).
+    controls: [
+      { key: 'name', label: 'App name' },
+      { key: 'redirectUris', label: 'Redirect URIs (one per line)' },
+      { key: 'service', label: 'Service' },
+      { key: 'require2fa', label: 'Require 2FA' },
+      { key: 'claimsDelivery', label: 'Claims in the id_token' },
+      { key: 'claimConfig', label: 'Claim requirements (standard scopes)' }
+    ]
+  },
+  'account-client': {
+    title: 'Create an account API client',
+    path: 'allus portal → Settings → API clients → the “Create client” form',
+    controls: [
+      { key: 'name', label: 'Client name' },
+      { key: 'capabilities', label: 'Capabilities — the four checkboxes' },
+      { key: 'redirectUri', label: 'Redirect URI (optional)' }
+    ]
+  },
+  'service-create': {
+    title: 'Create the service',
+    path: 'allus portal → Settings → Services → the “Add” row at the top',
+    controls: [
+      { key: 'name', label: 'New service name' },
+      { key: 'adminEmail', label: 'Admin email' }
+    ]
+  },
+  'service-overview': {
+    title: 'The service’s Overview tab',
+    path: 'allus portal → Settings → Services → your service → Overview',
+    controls: [
+      { key: 'shareCode', label: 'Share code' },
+      { key: 'adminEmail', label: 'Admin email' },
+      { key: 'connectPerson', label: 'Connect a person — share code + Send' },
+      { key: 'audience', label: 'Audience — Businesses / People / Anyone' },
+      { key: 'require2fa', label: 'Require 2FA' },
+      { key: 'keypair', label: 'Keypair — Public key (.pem) / Private key (.pem)' }
+    ]
+  },
+  'service-client': {
+    title: 'Register the data client',
+    path: 'allus portal → Settings → Services → your service → API access',
+    controls: [
+      { key: 'name', label: 'New client name' },
+      { key: 'redirectUri', label: 'Redirect URI (appears under each registered client)' }
+    ]
+  },
+  'service-requests': {
+    title: 'Configure the request fields',
+    path: 'allus portal → Settings → Services → your service → Requests',
+    controls: [
+      { key: 'fieldType', label: 'Type (the per-row select)' },
+      { key: 'label', label: 'Label shown to the person' },
+      { key: 'slug', label: 'Key' },
+      { key: 'audience', label: 'Asks — People / Companies / Both' },
+      { key: 'suggest', label: 'Suggest' },
+      { key: 'mandatory', label: 'Mandatory' },
+      { key: 'mustStayConnected', label: 'Must stay connected' },
+      { key: 'publish', label: 'Publish changes' }
+    ]
+  },
+  'service-webhook': {
+    title: 'Register the webhook',
+    path: 'allus portal → Settings → Services → your service → Webhooks → “Add webhook”',
+    controls: [
+      { key: 'url', label: 'Endpoint URL' },
+      { key: 'format', label: 'Payload format — JSON / XML' },
+      { key: 'events', label: 'Events (checkboxes; none selected = all)' },
+      { key: 'auth', label: 'Authentication — HMAC / bearer / basic / custom header / none' },
+      { key: 'encryptPayload', label: 'Encrypt payload with account keypair' },
+      { key: 'enabled', label: 'Enabled' }
+    ]
+  },
+  'service-flows': {
+    title: 'Import and publish the flow',
+    path: 'allus portal → Settings → Services → your service → Flows',
+    controls: [
+      { key: 'newFlowName', label: 'New flow name + Create' },
+      { key: 'import', label: 'Import (a .zip flow package)' },
+      { key: 'publish', label: 'Publish (top of the flow builder)' }
+    ]
+  }
+};
+
+// The three OAuth-app answers that are identical on every identity scenario live once
+// (standards §1) — the redirect URI above all, which is the one that most often goes wrong.
+const REDIRECT_URIS_SETTING =
+  'One line: http://localhost:8091/callback — or http://<the address you opened this page on>:8091/callback when you drive the example from a phone. The backend writes the origin YOUR BROWSER used into the config file, so the two must match; add both lines if you use both. Adjust the port if you set PORT.';
+
+const APP_NAME_SETTING =
+  'Anything — it is only the name the person sees on the consent screen. “Example test suite” is fine.';
+
+const CONFIDENTIAL_SETTING =
+  'TICK it. A public app issues NO client secret, and this example is a confidential server-side backend that authenticates with one.';
+
+const REQUIRE_2FA_OFF_SETTING =
+  'Leave it OFF. This checkbox is what scenario 7 turns on: the consent screen then challenges the person for their OWN account 2FA before it mints a code — a separate scenario rather than a variation of this one.';
+
+// Scenarios 1 and 2 — mode=signin, no claim values anywhere in the flow.
+const SIGNIN_APP_SETTINGS = {
+  name: APP_NAME_SETTING,
+  redirectUris: REDIRECT_URIS_SETTING,
+  service: 'Leave it on “No service (sign-in / one-time only)”. A service matters only to connect mode (scenario 4) and to the 2fa_enroll step (scenario 8); picking one here changes nothing this scenario does.',
+  confidential: CONFIDENTIAL_SETTING,
+  require2fa: REQUIRE_2FA_OFF_SETTING,
+  claimsDelivery: 'Leave it on “Encrypted” (the default). mode=signin asks for no claim values, so neither setting delivers anything; this control only bites on scenarios 5 and 6.',
+  claimConfig: 'Leave every Required / Verified-only box unticked and every “Stay-connected field” on “Not linkable”. They apply only to claims requested through the standard OIDC scopes, and mode=signin requests none.'
+};
+
+// Scenarios 5 and 6 — the OIDC leg reads its claims out of the id_token, so the delivery
+// mode is load-bearing rather than cosmetic (this is the control #557 was filed over).
+const OIDC_APP_SETTINGS = {
+  name: APP_NAME_SETTING,
+  redirectUris: REDIRECT_URIS_SETTING,
+  service: 'Leave it on “No service (sign-in / one-time only)”. A service is only needed for a per-claim live link, which plaintext delivery below rules out anyway.',
+  confidential: CONFIDENTIAL_SETTING,
+  require2fa: REQUIRE_2FA_OFF_SETTING,
+  claimsDelivery: 'Choose “Plaintext”. This is the one setting that decides whether this scenario shows anything: a standards-only OIDC relying party — which is exactly what this scenario demonstrates — reads its claims out of the id_token, and only plaintext delivery puts readable values there. Left on “Encrypted” the login still succeeds, but the id_token carries no email and no name — only the standard identity claims (sub, iss, aud, exp, …) plus email_verified=false — and nothing on screen says why. Encrypted delivery is for apps that read values through userinfo and decrypt them with the app key — that is scenario 3.',
+  claimConfig: 'Leave both boxes unticked and the “Stay-connected field” on “Not linkable” for the documented run. They DO apply here — scope=openid profile email resolves to exactly the name and email claims this block configures — so ticking “Required” on Email makes the consent screen refuse a decline, and “Verified only” additionally demands a verified email field. The stay-connected binding needs Encrypted delivery AND a service; this app has neither.'
+};
+
 // ── company-data family (#483) ────────────────────────────────────────────────
 // The regular company-data surface companies use, through the service data client:
 // connections read, request-field definitions, the change feed, webhooks, documents.
@@ -79,7 +238,46 @@ const CD_PORTAL_STEPS = [
   'In the allus portal, create the SERVICE your company operates and download its private key (PEM).',
   'Register a data client on that service (client_credentials) — its whitelist auto-grants /api/company-data/*, /api/keys/* and /api/contact-fields*.',
   'On the service, configure the request fields (the slugs you ask connected people for).',
-  'Connect a test person to the service (the allme app → connect), so there is data to read.'
+  'Connect a test person to the service (the allme app → connect, or “Connect a person” on the service’s Overview tab), so there is data to read.'
+];
+
+// The four portal forms every company-data scenario sends you to. Shared, because the
+// scenarios share the setup — one description, five scenarios (standards §1).
+const SERVICE_CREATE_SETTINGS = {
+  name: 'Anything — the person sees it on the connect screen. “CRM” or “Example service” is fine.',
+  adminEmail: 'A mailbox you can actually read. It is MANDATORY (the form refuses an invalid address) and is where the platform emails you when change-feed events go un-fetched for days. It is never shown to connected people.'
+};
+
+const SERVICE_OVERVIEW_SETTINGS = {
+  shareCode: 'Keep the code the portal generated from the name, or set your own 1–8 uppercase A–Z / 0–9. It is the second half of the connect handle COMPANYCODE/SERVICECODE the person types, so note it down — nothing in this example needs it, but the person connecting does.',
+  adminEmail: 'Already set when you created the service. Leave it; this field is only here to change it later.',
+  connectPerson: 'Use it only where the scenario needs the demo person ALREADY connected to this service — the company-data and flow scenarios do; scenario 4 connects the person itself through the consent screen, and scenario 8 needs an enrollment rather than a connection. Type the person’s own 6-character share code and press Send; they accept in the allme app. The other direction works too: the person opens COMPANYCODE/SERVICECODE themselves. Skip it if they are already connected.',
+  audience: 'Leave it on “People” (the default). “Businesses” makes the service refuse person connections outright, so the demo person could not connect at all; “Anyone” also works.',
+  require2fa: 'Leave it OFF. It adds an extra verification step for the person when they sign in or connect through this service — real, but nothing this example demonstrates.',
+  keypair: 'Press “Private key (.pem)” and keep the file — it is what you pick as “Service private key (PEM)” below, and the SDK decrypts every value with it. Its passphrase is the random string the portal showed ONCE when you created the service (the amber “Save this passphrase now” panel); it is not recoverable, so without it you need a new service. You do not need the public key here.'
+};
+
+const SERVICE_CLIENT_SETTINGS = {
+  name: 'Anything — “Example test suite” or “CRM backend”. It is the only field on this form. The client id and the secret are shown once, immediately after you press Register; copy both into the inputs below before leaving the page.',
+  redirectUri: 'Leave it EMPTY. It appears under each registered client and enables the authorization-code flow, which the SDK does not use — every company-data call authenticates with client_credentials. An https URL is the only thing it would accept anyway.'
+};
+
+const SERVICE_REQUESTS_SETTINGS = {
+  fieldType: 'Pick the types you want to read — Email and Phone make the shortest demo. The type is IMMUTABLE once the row is published: changing your mind means deleting the row and adding a new one, which deletes whatever people already answered into it.',
+  label: 'What the person sees on the connect screen, e.g. “Billing email”. Free text; rename it whenever you like — the Key below, not this, is what your code reads.',
+  slug: 'Leave it blank to have it derived from the label, or set your own [a-z0-9_] key. THIS is the contract: every value the SDK hands you is keyed by it — conn.values["billing_email"] — and it stays stable when you rename the label.',
+  audience: 'Leave it on “People”. “Companies” makes the row invisible to the demo person (it is the business-to-business slot) and also hides the Suggest control; “Both” works too.',
+  suggest: 'Optional — “No suggestion” is fine. It only pre-selects one of the person’s own fields of that type on the connect screen. The person always chooses; you never name their field.',
+  mandatory: 'Leave it unticked for the demo. Ticked, a person cannot finish connecting without answering that row.',
+  mustStayConnected: 'Leave it unticked. Ticked, it forces Mandatory on as well and forbids a share-once answer, so the value must stay live — useful in production, one more thing to get right in a demo.',
+  publish: 'Press “Publish changes” — the rows are a draft until you do, and nothing reaches the API before that. On a service that already has connections, publishing a NEW row asks every connected person to consent to it; existing connections stay fully active until they answer.'
+};
+
+const CD_PORTAL_SETUP = [
+  { form: 'service-create', settings: SERVICE_CREATE_SETTINGS },
+  { form: 'service-overview', settings: SERVICE_OVERVIEW_SETTINGS },
+  { form: 'service-client', settings: SERVICE_CLIENT_SETTINGS },
+  { form: 'service-requests', settings: SERVICE_REQUESTS_SETTINGS }
 ];
 
 const COMPANYDATA_SCENARIOS = [
@@ -91,6 +289,7 @@ const COMPANYDATA_SCENARIOS = [
     readmeChapter: 'Company data — read connections',
     runButton: 'Read connections',
     checklist: CD_PORTAL_STEPS,
+    portalSetup: CD_PORTAL_SETUP,
     prerequisites: [],
     fields: [...CD_SERVICE_FIELDS, ...CD_ADVANCED]
   },
@@ -101,7 +300,11 @@ const COMPANYDATA_SCENARIOS = [
     summary: 'Client::requestFields() returns your request slugs with label / type / the folded mandatory flag + one_time.',
     readmeChapter: 'Company data — request fields',
     runButton: 'List request fields',
-    checklist: CD_PORTAL_STEPS,
+    checklist: [
+      ...CD_PORTAL_STEPS,
+      'The one_time flag this scenario prints is always false for rows made in the portal: the Requests tab has no one-time control, so every row it creates is a live/connected slot. one_time exists in the API and the SDK model; the portal simply does not offer it today.'
+    ],
+    portalSetup: CD_PORTAL_SETUP,
     prerequisites: [],
     fields: [...CD_SERVICE_FIELDS, ...CD_ADVANCED]
   },
@@ -116,6 +319,7 @@ const COMPANYDATA_SCENARIOS = [
       ...CD_PORTAL_STEPS,
       'Optionally edit one of the connected person’s shared values in the allme app just before running, so a field_updated event is in the feed to drain.'
     ],
+    portalSetup: CD_PORTAL_SETUP,
     prerequisites: [],
     fields: [...CD_SERVICE_FIELDS, ...CD_ADVANCED]
   },
@@ -128,9 +332,22 @@ const COMPANYDATA_SCENARIOS = [
     runButton: 'Start receiving',
     checklist: [
       ...CD_PORTAL_STEPS,
-      'Register a webhook on the service. Deployed platform: the cluster cannot reach localhost, so open a tunnel — cloudflared tunnel --url http://localhost:8091 — and register the tunnel’s public URL with /webhook appended. Local stack: register http://localhost:8091/webhook (the local delivery worker reaches it directly).',
-      'Set encrypt_payload OFF (this example holds no account private key; an encrypted body cannot be decrypted here).',
-      'Copy the webhook id and the one-time HMAC secret shown at registration into the inputs below.'
+      'Deployed platform: the cluster cannot reach your localhost, so open a tunnel first — cloudflared tunnel --url http://localhost:8091 — and use the printed public URL below. Local stack: no tunnel, the local delivery worker reaches http://localhost:8091/webhook directly.',
+      'Register the webhook on the service (the per-control table below), then copy the webhook id and the one-time HMAC secret shown at registration into the inputs. The run REFUSES to start without them (409 not_configured) — the tunnel is optional, the registration is not.'
+    ],
+    portalSetup: [
+      ...CD_PORTAL_SETUP,
+      {
+        form: 'service-webhook',
+        settings: {
+          url: 'Your tunnel’s public URL with /webhook appended (deployed platform), or http://localhost:8091/webhook (local stack). Plain http is accepted, deliberately, so a localhost receiver works in development; anything that is not an http(s) URL with a host is refused as services.webhook_url_invalid.',
+          format: 'Leave it on JSON. The SDK parses XML too, so either works; JSON is what the “what just happened” panel is easiest to read as.',
+          events: 'Leave every box UNTICKED — no selection means ALL events, which is what this scenario wants to observe. Ticking a subset is a filter, not a preference: anything unticked simply never arrives.',
+          auth: 'Choose “HMAC signature” (the recommended default) and leave its secret box EMPTY so the platform generates one — it is shown once, and it is what goes in the “Webhook HMAC secret” input below. verifyWebhook() checks X-Allus-Signature against it. The other four methods (bearer, basic, custom header, none) are real and every SDK supports them, but this example writes only an HMAC secret into its config: registered with any other method, every delivery fails verification, the receiver answers 401, and the platform circuit-breaks the webhook.',
+          encryptPayload: 'Leave it OFF. Ticked, the body is encrypted to your company ACCOUNT public key, and this example holds no account private key — every delivery would arrive undecryptable.',
+          enabled: 'Leave it ON (the default). Off, the webhook is registered but nothing is ever delivered, and the scenario would sit on its change-feed fallback with no explanation.'
+        }
+      }
     ],
     prerequisites: [],
     fields: [
@@ -151,6 +368,7 @@ const COMPANYDATA_SCENARIOS = [
       ...CD_PORTAL_STEPS,
       'Copy the connected person’s share code into “Target person share code” below — the per-person, private and contract documents are encrypted to that recipient.'
     ],
+    portalSetup: CD_PORTAL_SETUP,
     prerequisites: [],
     fields: [
       ...CD_SERVICE_FIELDS,
@@ -169,10 +387,10 @@ export const SCENARIOS = [
     readmeChapter: 'Sign in (redirect)',
     runButton: 'Sign in (redirect)',
     checklist: [
-      'In the allus portal → OAuth apps page, register an OAuth app.',
-      'Mark it Confidential (a public app issues NO client secret) and set its redirect URI to http://localhost:8091/callback.',
-      'Copy the app’s client id and client secret into the inputs below.'
+      'In the allus portal → Settings → OAuth apps, register an OAuth app with the settings in the table below.',
+      'Copy the app’s client id and client secret — both shown once, immediately after you press Register app — into the inputs below.'
     ],
+    portalSetup: [{ form: 'oauth-app', settings: SIGNIN_APP_SETTINGS }],
     prerequisites: [],
     fields: [
       { key: 'oauthClientId', label: 'OAuth app client id', type: 'text' },
@@ -188,10 +406,10 @@ export const SCENARIOS = [
     readmeChapter: 'Sign in (detached)',
     runButton: 'Start detached sign-in',
     checklist: [
-      'In the allus portal → OAuth apps page, register an OAuth app (or reuse scenario 1’s).',
-      'Mark it Confidential (a public app issues NO client secret) and set its redirect URI to http://localhost:8091/callback.',
-      'Copy the app’s client id and client secret into the inputs below.'
+      'In the allus portal → Settings → OAuth apps, register an OAuth app with the settings in the table below — or simply reuse scenario 1’s app, which needs exactly the same ones.',
+      'Copy the app’s client id and client secret (both shown once, right after you press Register app) into the inputs below.'
     ],
+    portalSetup: [{ form: 'oauth-app', settings: SIGNIN_APP_SETTINGS }],
     prerequisites: [PHONE_PREREQ],
     fields: [
       { key: 'oauthClientId', label: 'OAuth app client id', type: 'text' },
@@ -207,10 +425,24 @@ export const SCENARIOS = [
     readmeChapter: 'One-time claims',
     runButton: 'Request one-time claims',
     checklist: [
-      'In the allus portal → OAuth apps page, register a Confidential OAuth app with NO service selected (the portal labels “No service” as “sign-in / one-time only”). There is NO “enable one-time claims” control — one_time is a mode the SDK sends, not an app setting.',
-      'A public app issues NO client secret, so Confidential is required; set its redirect URI to http://localhost:8091/callback.',
-      'Download the app’s private key (PEM) from the portal — it decrypts the one-time claim values.',
-      'Copy the client id/secret below, pick the downloaded PEM file, and enter its passphrase.'
+      'In the allus portal → Settings → OAuth apps, register an OAuth app with the settings in the table below. There is NO “enable one-time claims” control anywhere on that form — one_time is a mode the SDK sends per request, not an app setting.',
+      'SAVE THE PASSPHRASE the portal shows once when the app is created: it is what decrypts the app private key, and it is not recoverable. The client secret is shown once in the same panel.',
+      'Download the app’s private key with the download button on the app’s row (it appears after registration; there is no such control on the form) — it decrypts the one-time claim values.',
+      'Copy the client id/secret below, pick the downloaded PEM file, and enter that passphrase.'
+    ],
+    portalSetup: [
+      {
+        form: 'oauth-app',
+        settings: {
+          name: APP_NAME_SETTING,
+          redirectUris: REDIRECT_URIS_SETTING,
+          service: 'Leave it on “No service (sign-in / one-time only)” — the portal’s own wording for exactly this scenario. Selecting a service does not enable or change one_time; it only makes connect mode (scenario 4) possible.',
+          confidential: CONFIDENTIAL_SETTING,
+          require2fa: REQUIRE_2FA_OFF_SETTING,
+          claimsDelivery: 'Leave it on “Encrypted” (the default), though on this leg the setting is not consulted at all: one_time values ALWAYS reach you as app-key ciphertext through userinfo, which is why this scenario needs the private-key PEM below. The control exists for the OIDC leg (scenarios 5 and 6).',
+          claimConfig: 'Leave every box unticked and every “Stay-connected field” on “Not linkable”. The one-time leg never reads this block: only the claims the request itself names apply (this example asks for email + phone). It exists for standards-only relying parties that cannot express requirements in an OIDC request, and the stay-connected binding is an OIDC-leg feature that is never offered here.'
+        }
+      }
     ],
     prerequisites: [],
     fields: [
@@ -234,10 +466,26 @@ export const SCENARIOS = [
     readmeChapter: 'Connect (stay-connected)',
     runButton: 'Connect and read live values',
     checklist: [
-      'In the allus portal, create the SERVICE you connect to (service settings) and download its private key (PEM) — both the OAuth app and the data client reference this service.',
-      'OAuth apps page → register an OAuth app for the connect CONSENT (the identity app the person approves): mark it Confidential (a public app issues NO client secret), SELECT THE SERVICE on it (connect is refused with oauth.connect_no_service if the OAuth app carries no service), and set its redirect URI to http://localhost:8091/callback.',
-      'Separately, register a data client with the SAME service reference for READING the live values — its redirect is HTTPS-only, so it cannot double as the consent app.',
-      'Copy BOTH the OAuth app id/secret and the data client id/secret below, pick the SERVICE PEM, and enter its passphrase.'
+      'Three portal objects, in this order: the SERVICE you connect to, an OAuth app that references it (the consent the person approves), and a data client ON that service (which reads the live values afterwards). All three per-control tables are below.',
+      'The OAuth app and the data client must name the SAME service. They cannot be one object: a data client’s redirect URI is https-only, so it can never be the consent app.',
+      'Copy BOTH the OAuth app id/secret and the data client id/secret below, pick the SERVICE private key PEM, and enter the passphrase shown once when the service was created.'
+    ],
+    portalSetup: [
+      { form: 'service-create', settings: SERVICE_CREATE_SETTINGS },
+      { form: 'service-overview', settings: SERVICE_OVERVIEW_SETTINGS },
+      {
+        form: 'oauth-app',
+        settings: {
+          name: APP_NAME_SETTING,
+          redirectUris: REDIRECT_URIS_SETTING,
+          service: 'SELECT the service you just created — this is the one setting connect mode cannot do without: an app carrying no service is refused with oauth.connect_no_service. Pick the entry labelled “<name> (enables connect mode)”; one labelled “business-only, no live link” has its Audience on Businesses and no person can connect through it.',
+          confidential: CONFIDENTIAL_SETTING,
+          require2fa: REQUIRE_2FA_OFF_SETTING,
+          claimsDelivery: 'Leave it on “Encrypted” (the default). connect mode delivers no claim values through the token at all — the person’s live values come back over the company-data API, encrypted to the SERVICE key, which is why the input below is the service PEM and not the app’s. Switching to Plaintext is for standards-only OIDC relying parties and would disable a live link if you later used one.',
+          claimConfig: 'Leave every box unticked and every “Stay-connected field” on “Not linkable”. Those are the OIDC leg’s smaller, per-claim version of this scenario; mode=connect runs the full company connect instead, so the person is asked about your service’s own request fields and no binding is consulted.'
+        }
+      },
+      { form: 'service-client', settings: SERVICE_CLIENT_SETTINGS }
     ],
     prerequisites: [],
     fields: [
@@ -263,10 +511,11 @@ export const SCENARIOS = [
     readmeChapter: 'OIDC login',
     runButton: 'Sign in with OIDC',
     checklist: [
-      'In the allus portal → OAuth apps page, register an OAuth app — an OAuth app IS the OIDC relying-party registration; there is no separate “OIDC client”.',
-      'Mark it Confidential (a public app issues NO client secret) and set its redirect URI to http://localhost:8091/callback. (The example uses client_secret_post token auth — that is fixed provider behavior, not a portal control.)',
-      'Copy the OAuth app’s client id and client secret into the inputs below.'
+      'In the allus portal → Settings → OAuth apps, register an OAuth app with the settings in the table below — an OAuth app IS the OIDC relying-party registration; there is no separate “OIDC client”.',
+      'Read the “Claims in the id_token” row before you save. It has to be Plaintext, and it is the difference between this scenario showing an email and a name or showing neither.',
+      'Copy the OAuth app’s client id and client secret into the inputs below. (The example uses client_secret_post token auth — fixed provider behaviour, not a portal control.)'
     ],
+    portalSetup: [{ form: 'oauth-app', settings: OIDC_APP_SETTINGS }],
     prerequisites: [],
     fields: [
       { key: 'oauthClientId', label: 'OAuth app client id (OIDC RP)', type: 'text' },
@@ -282,10 +531,11 @@ export const SCENARIOS = [
     readmeChapter: 'OIDC — continue on your phone',
     runButton: 'Start OIDC (continue on phone)',
     checklist: [
-      'In the allus portal → OAuth apps page, register an OAuth app (or reuse scenario 5’s) — an OAuth app IS the OIDC relying-party registration; there is no separate “OIDC client”.',
-      'Mark it Confidential (a public app issues NO client secret) and set its redirect URI to http://localhost:8091/callback. (The example uses client_secret_post token auth — fixed provider behavior, not a portal control.)',
-      'Copy the OAuth app’s client id and client secret into the inputs below.'
+      'In the allus portal → Settings → OAuth apps, register an OAuth app with the settings in the table below — or reuse scenario 5’s, which needs exactly the same ones. An OAuth app IS the OIDC relying-party registration; there is no separate “OIDC client”.',
+      '“Claims in the id_token” must be Plaintext here for the same reason as in scenario 5 — see the row below.',
+      'Copy the OAuth app’s client id and client secret into the inputs below. (The example uses client_secret_post token auth — fixed provider behaviour, not a portal control.)'
     ],
+    portalSetup: [{ form: 'oauth-app', settings: OIDC_APP_SETTINGS }],
     prerequisites: [PHONE_PREREQ],
     fields: [
       { key: 'oauthClientId', label: 'OAuth app client id (OIDC RP)', type: 'text' },
@@ -301,10 +551,23 @@ export const SCENARIOS = [
     readmeChapter: '2FA at consent',
     // No runButton: this is the guide card (kind: guide).
     checklist: [
-      'In the allus portal → OAuth apps page, tick “Require 2FA on the OAuth APP”.',
+      'This scenario EDITS the app scenario 1 or scenario 5 already uses rather than registering a new one: allus portal → Settings → OAuth apps → the app’s pencil button. The per-control table below is that edit panel — it is the registration form minus “Confidential”, which is fixed when an app is created.',
       'Person-account prerequisite: the demo person has TOTP or email 2FA enabled on their allme account (allme app/web → Settings).',
-      'There is NO phone-push approval in-flow here and number matching plays no role — that lives only on scenario 8’s service challenges.',
-      'Now run scenario 1 (redirect sign-in) and scenario 5 (OIDC login) and watch the consent-side 2FA prompt appear.'
+      'There is NO phone-push approval in-flow here and number matching plays no role — that lives only on scenario 8’s service challenges. The service-level “Require 2FA” toggle on a service’s Overview tab is a different control with the same name; this scenario is the one on the APP.',
+      'Now run scenario 1 (redirect sign-in) and scenario 5 (OIDC login) and watch the consent-side 2FA prompt appear. Untick it again afterwards, or those two scenarios keep prompting.'
+    ],
+    portalSetup: [
+      {
+        form: 'oauth-app-edit',
+        settings: {
+          name: 'Leave it exactly as it is — you are editing the app scenario 1 or 5 uses, not creating a variant.',
+          redirectUris: 'Leave them exactly as they are. Clearing or changing a line here breaks the scenario you are about to observe.',
+          service: 'Leave it as it is (“No service (sign-in / one-time only)” on both of those apps). 2FA at consent is the person’s OWN account 2FA and has nothing to do with a service.',
+          require2fa: 'TICK it. This single checkbox IS the scenario: with it on, the /auth consent screen challenges the person for their own account 2FA — TOTP, an email code, or a biometric — before it will mint a code.',
+          claimsDelivery: 'Leave whatever that app already has: Encrypted on scenario 1’s app, Plaintext on scenario 5’s. Changing it changes what those scenarios show, which is not what you are testing here.',
+          claimConfig: 'Leave it exactly as it is. Consent-side 2FA is a gate in front of the same consent screen; it neither reads nor changes the claim options.'
+        }
+      }
     ],
     prerequisites: [
       'The demo person’s allme account has TOTP or email 2FA enabled (an allme app/web Settings step).'
@@ -322,10 +585,35 @@ export const SCENARIOS = [
     enrollButton: 'Enroll device (redirect)',
     enrollButtonDetached: 'Enroll — continue on phone',
     checklist: [
-      'Registration (a): in the allus portal → OAuth apps page, register an OAuth app WITH a service reference (required for the 2fa_enroll step). Mark it Confidential (a public app issues NO client secret) and set its redirect URI to http://localhost:8091/callback.',
-      'Registration (b): register a data client for the challenges. Its endpoint whitelist — /api/service-2fa/* included — is granted automatically at registration, so there is nothing to pick or tick. Use a client registered on 2026-07-23 or later: an older one predates that grant, and until the platform has backfilled it every challenge call returns 403 “Client not authorized for this endpoint”. Registering a fresh data client always gives you the current whitelist.',
-      'In the portal service settings, you will toggle number matching ON and OFF to exercise both.',
-      'Enter the OAuth-app (with-service) creds, the data-client creds, and a demo user name below. Enroll first — “Enroll device (redirect)” completes via the callback, “Enroll — continue on phone” is the detached leg (link + QR, completes by pollResult) — then run a challenge.'
+      'You need ONE service and, on it, two registrations that must name the SAME service: an OAuth app (which the person enrolls through) and a data client (which raises the challenges). All the per-control tables are below.',
+      'The data client’s endpoint whitelist — /api/service-2fa/* included — is granted automatically at registration, so there is nothing to pick or tick. Use a client registered on 2026-07-23 or later: an older one predates that grant, and until the platform has backfilled it every challenge call returns 403 “Client not authorized for this endpoint”. Registering a fresh data client always gives you the current whitelist.',
+      'NUMBER MATCHING IS NOT A PORTAL CONTROL — there is no toggle for it on any portal page. It is a per-service setting you change over the API: PUT /api/services/{serviceId}/number-matching with body {"number_matching": true} (or false). Authenticate as an ACCOUNT API client holding the “Service management” capability (allus portal → Settings → API clients; the last table below is that form) with a client_credentials token from /oauth2/token. Run the scenario once with it on and once with it off; with it on, the challenge comes back with matching_digits, which the fake login page displays and the person types back into the allme app.',
+      'Enter the OAuth-app (with-service) creds, the data-client creds, the person’s share code and a demo user name below. Enroll first — “Enroll device (redirect)” completes via the callback, “Enroll — continue on phone” is the detached leg (link + QR, completes by pollResult) — then run a challenge.'
+    ],
+    portalSetup: [
+      { form: 'service-create', settings: SERVICE_CREATE_SETTINGS },
+      { form: 'service-overview', settings: SERVICE_OVERVIEW_SETTINGS },
+      {
+        form: 'oauth-app',
+        settings: {
+          name: APP_NAME_SETTING,
+          redirectUris: REDIRECT_URIS_SETTING,
+          service: 'SELECT the service — the same one the data client below belongs to. The 2fa_enroll step records the person against THAT service, and a challenge raised by a client on a different service will not find the enrollment (404 unknown or not enrolled). An app with no service cannot run the enroll step at all.',
+          confidential: CONFIDENTIAL_SETTING,
+          require2fa: 'Leave it OFF. That checkbox gates code minting at the consent screen with the person’s OWN account 2FA (scenario 7); enrollment mints no code, and the approval this scenario demonstrates is the service’s challenge, not the person’s account 2FA. Ticking it only adds an unrelated prompt in front of enrolling.',
+          claimsDelivery: 'Leave it on “Encrypted” (the default). mode=2fa_enroll delivers no claim values at all — it records an enrollment and returns — so neither setting changes anything here.',
+          claimConfig: 'Leave every box unticked and every “Stay-connected field” on “Not linkable”. Enrollment touches none of the scope/claim machinery.'
+        }
+      },
+      { form: 'service-client', settings: SERVICE_CLIENT_SETTINGS },
+      {
+        form: 'account-client',
+        settings: {
+          name: 'Anything — “number-matching toggle” says what you made it for. This client exists ONLY to flip number matching, because the portal has no control for it.',
+          capabilities: 'Tick “Service management” and nothing else. That is the group granting /api/services*, which is what PUT /api/services/{id}/number-matching lives under. Leave “Company profile & fields”, “Customer connections & feed” and especially “Sign-in apps (OAuth)” unticked — none of them is needed, and the last one is powerful.',
+          redirectUri: 'Leave it EMPTY. It enables the authorization-code flow, and you want the client_credentials one: POST /oauth2/token with grant_type=client_credentials and this client’s id/secret, then send the resulting bearer token on the PUT.'
+        }
+      }
     ],
     prerequisites: [PHONE_PREREQ],
     fields: [
@@ -363,11 +651,24 @@ export const SCENARIOS = [
     readmeChapter: 'Run a contract flow',
     runButton: 'Trigger the flow run',
     checklist: [
-      'In the allus portal, register a DATA CLIENT (client_credentials) for the service — its whitelist auto-grants /api/company-data/*.',
-      'Create (or reuse) the SERVICE and download its private key (PEM) — the flow answers + document are decrypted with it.',
-      'Import the chosen fixture zip (service settings → Flows → Import) from sdks/php/examples/flow/fixtures/, then PUBLISH the imported flow.',
-      'Copy the PUBLISHED flow id and the target CONNECTION id below, pick the SERVICE PEM and its passphrase, and enter the data-client id/secret.',
+      'Create (or reuse) the SERVICE, register a data client on it, and import + publish one of the two flow packages from this example’s fixtures/ directory. The per-control tables are below.',
+      'THE PUBLISHED FLOW ID is the last segment of the flow builder’s address after you publish — .../services/<serviceId>/flows/<flowId>. Copy it from the address bar; there is no “copy id” button.',
+      'THE CONNECTION ID DOES NOT COME FROM THE PORTAL — the portal shows no per-service list of connected people. Run the “Read connected people” scenario first and open its Raw view: each entry’s connectionId is the value this scenario wants. The demo person must already be connected to this service.',
+      'Copy the flow id and the connection id below, pick the SERVICE private key PEM and its passphrase, and enter the data-client id/secret.',
       'Pick the same fixture below that you imported — the backend uses it to know the validation-demo step and whether to download a document.'
+    ],
+    portalSetup: [
+      { form: 'service-create', settings: SERVICE_CREATE_SETTINGS },
+      { form: 'service-overview', settings: SERVICE_OVERVIEW_SETTINGS },
+      { form: 'service-client', settings: SERVICE_CLIENT_SETTINGS },
+      {
+        form: 'service-flows',
+        settings: {
+          newFlowName: 'SKIP it. That row authors a brand-new empty flow; this scenario runs a ready-made package. Only use it if you want to build a flow by hand instead.',
+          import: 'Press “Import” and pick ONE of the two .zip packages shipped with the example you started — they sit in its fixtures/ folder — the info-gathering one or the contract one. Whichever you pick, pick the same one in the “Fixture” input below. Import drops you straight into the flow builder on the imported DRAFT.',
+          publish: 'Press “Publish” at the top of the builder. An imported flow is a draft and a run cannot be triggered against a draft, so skipping this is the single most common way this scenario fails to start. Publishing appends a version; the flow id in the address bar does not change.'
+        }
+      }
     ],
     prerequisites: [
       'A physical phone with the allme app, signed in as the connected demo person — the person answers their turn (and, for the contract fixture, signs the document) on the phone.'
@@ -439,4 +740,127 @@ export function isScenarioReady(scenario, values) {
 export function scenarioStatus(scenario, values) {
   if (scenario.kind === 'guide') return 'guide';
   return isScenarioReady(scenario, values) ? 'ready' : 'setup';
+}
+
+// ── portal-setup completeness (#557) ─────────────────────────────────────────
+// The whole point of PORTAL_FORMS is that an unexplained portal control becomes
+// DETECTABLE instead of a matter of memory. This is the detector, and it is the ONE
+// implementation of the rule: `PortalSetup.jsx` renders its findings as a loud row and
+// `scripts/check-portal-setup.mjs` (run by `npm run check`, and by `prebuild` before
+// every release build) exits non-zero on any of them.
+//
+// ⚠ **ABSENCE IS A FINDING, NOT A PASS** (#557 review pass 1). The first version iterated
+// `scenario.portalSetup || []`, so a scenario with NO declaration produced zero gaps: the
+// check exited 0 while merely reporting a smaller scenario count, the UI rendered nothing,
+// and deleting a scenario's whole `portalSetup` silently restored the exact under-specified
+// state this issue exists to prevent. That is the "nothing was checked read as nothing is
+// wrong" defect class the project already refuses elsewhere (standards §4: `check-keys.js`
+// exits non-zero when no platform was present to check). So the declaration itself is
+// mandatory, and the ONLY way to say a scenario needs no portal work is to say it OUT LOUD
+// with `noPortalSetup('<why>')` — silence is not an answer at the declaration level either.
+//
+// Four kinds of finding, all defects in the DATA rather than in a reader's setup:
+//   `missing-declaration` — the scenario declares no portal setup at all (absent, empty,
+//                           or a `noPortalSetup()` with no reason given).
+//   `unknown-form`        — the scenario names a form the catalog does not have.
+//   `missing-setting`     — the form renders a control the scenario says nothing about.
+//   `unknown-setting`     — the scenario answers a control the form does not render
+//                           (usually a control the portal removed, or a typo'd key).
+
+/**
+ * The explicit, reasoned opt-out — the one legitimate alternative to a list of forms.
+ * Every scenario shipped today needs portal work, so nothing uses it yet; it exists so
+ * that "this scenario genuinely touches no portal form" is a DECLARATION the checker can
+ * tell apart from an omission, instead of the two being the same empty value.
+ */
+export function noPortalSetup(reason) {
+  return { none: reason };
+}
+
+/**
+ * Normalise a scenario's declaration into exactly one of three shapes, so the renderer and
+ * the checker cannot disagree about what "declared" means:
+ *   {mode:'forms', entries}  — a non-empty list of portal forms to explain.
+ *   {mode:'none', reason}    — an explicit, reasoned opt-out.
+ *   {mode:'undeclared'}      — anything else: absent, null, `[]`, `{}`, a reasonless
+ *                              opt-out, or a wrong type. All of them are findings.
+ */
+export function portalSetupDeclaration(scenario) {
+  const decl = scenario.portalSetup;
+  if (Array.isArray(decl)) {
+    return decl.length > 0 ? { mode: 'forms', entries: decl } : { mode: 'undeclared' };
+  }
+  if (decl && typeof decl === 'object' && typeof decl.none === 'string' && decl.none.trim().length > 0) {
+    return { mode: 'none', reason: decl.none };
+  }
+  return { mode: 'undeclared' };
+}
+
+export function portalSetupGaps(scenario) {
+  const declaration = portalSetupDeclaration(scenario);
+  if (declaration.mode === 'undeclared') {
+    return [{ kind: 'missing-declaration' }];
+  }
+  if (declaration.mode === 'none') {
+    return [];
+  }
+  const gaps = [];
+  for (const entry of declaration.entries) {
+    const form = PORTAL_FORMS[entry.form];
+    if (!form) {
+      gaps.push({ kind: 'unknown-form', form: entry.form });
+      continue;
+    }
+    // The SAME class as `missing-declaration`, one level up: a catalog entry with no
+    // controls makes the per-control loop below iterate nothing, so a scenario naming it
+    // would explain nothing and still come back clean. Emptiness must never read as
+    // completeness at ANY level of this model.
+    if (!Array.isArray(form.controls) || form.controls.length === 0) {
+      gaps.push({ kind: 'empty-form', form: entry.form });
+      continue;
+    }
+    const settings = entry.settings || {};
+    for (const control of form.controls) {
+      const v = settings[control.key];
+      if (typeof v !== 'string' || v.trim().length === 0) {
+        gaps.push({ kind: 'missing-setting', form: entry.form, control: control.key, label: control.label });
+      }
+    }
+    for (const key of Object.keys(settings)) {
+      if (!form.controls.some((c) => c.key === key)) {
+        gaps.push({ kind: 'unknown-setting', form: entry.form, control: key });
+      }
+    }
+  }
+  return gaps;
+}
+
+/** Every scenario's gaps, flattened — what the check script reports on. */
+export function allPortalSetupGaps() {
+  return SCENARIOS.flatMap((s) => portalSetupGaps(s).map((g) => ({ scenario: s.id, ...g })));
+}
+
+/**
+ * The CATALOG's own integrity, checked independently of who names it — same reasoning as
+ * `empty-form` above, but it fires even when no scenario references the form yet, so a
+ * half-written entry cannot sit in the catalog waiting to pass silently later.
+ */
+export function portalFormCatalogGaps() {
+  const gaps = [];
+  for (const [key, form] of Object.entries(PORTAL_FORMS)) {
+    const text = (v) => typeof v === 'string' && v.trim().length > 0;
+    if (!text(form.title) || !text(form.path)) {
+      gaps.push({ kind: 'form-missing-label', form: key });
+    }
+    if (!Array.isArray(form.controls) || form.controls.length === 0) {
+      gaps.push({ kind: 'empty-form', form: key });
+      continue;
+    }
+    for (const control of form.controls) {
+      if (!text(control.key) || !text(control.label)) {
+        gaps.push({ kind: 'control-missing-label', form: key, control: control.key });
+      }
+    }
+  }
+  return gaps;
 }

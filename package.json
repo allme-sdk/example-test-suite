@@ -7,6 +7,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "check": "node scripts/check-portal-setup.mjs",
+    "prebuild": "npm run check",
     "build": "vite build",
     "preview": "vite preview"
   },

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Check, ChevronDown, ChevronRight, FileKey, Save, Upload, X, AlertCircle } from 'lucide-react';
 import * as ui from '../ui.js';
+import PortalSetup from './PortalSetup.jsx';
 
 function PemField({ field, value, onChange }) {
   const inputRef = useRef(null);
@@ -136,6 +137,11 @@ export default function SetupWizard({
           ))}
         </ol>
       </div>
+
+      {/* #557: the portal half of setup, one row per control of every form the checklist
+          above sends the reader to — rendered from the FORM's control list, so an
+          unexplained control shows up instead of being silently absent. */}
+      <PortalSetup scenario={scenario} />
 
       {scenario.prerequisites && scenario.prerequisites.length > 0 && (
         <div className={ui.noteBox}>
