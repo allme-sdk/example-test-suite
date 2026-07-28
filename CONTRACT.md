@@ -104,8 +104,34 @@ recorded). Writes the outcome to the run stash, then 302 →
 ### `GET /api/runs/{runId}`
 
 `{status: "pending"|"done"|"failed", result?, error?, calls: [strings]}` — ONE
-poll endpoint for scenario runs AND enroll runs. `calls` names the exact SDK
-functions invoked (feeds "what just happened"). **Progress is poll-driven and
+poll endpoint for scenario runs AND enroll runs. `calls` is the run's TRACE and
+feeds the "what just happened" panel, so it must be a record of what the run
+actually did (#578): every entry is `<SDK method> — <what that call did in THIS
+scenario>`, appended AT the call site, in the order the calls were made, and the
+list covers the scenario end to end (client construction included — `fromConfig`
+is a real SDK call and the first thing a reader writes). The method reference is
+written in the backend's own language idiom; **the annotation after the em dash is
+byte-identical across the backends**, so one scenario teaches one thing whichever
+example a reader starts. The same method called in a different mode is a different
+entry (`authorizeUrl` under `signin` / `one_time` / `connect`), and an entry wrapped
+in parentheses is deliberately not an SDK call (`(webhook run started)`,
+`(callback ?enrolled=true)`; `(oidc)` marks the third-party OIDC library).
+
+**Record at ATTEMPT time — append immediately BEFORE the call, never after it
+returns.** A run that ends `failed` is still a run the panel reports, and the call
+the reader needs to see is the one that THREW: a bad client secret, a 429, a
+decrypt failure. An append placed after the call is skipped by that very exception,
+so the panel would say only that the client was constructed — the same
+under-reporting this contract exists to prevent, one path further in. A **bulk**
+call records one entry per ATTEMPT (`createDocument` is six entries naming the six
+document types, not one entry claiming six), so a run that dies on the third
+document shows exactly three.
+
+Appends are **deduplicated on first occurrence**, because several handlers can run
+twice for one run: `/callback` carries no already-completed guard, so re-opening or
+refreshing the callback URL inside the run's 30-minute TTL re-runs the completion,
+and the flow / company-data poll loops legitimately re-attempt the same call on
+every poll. The frontend renders the list verbatim, in order. **Progress is poll-driven and
 blocking SDK waits are short-cycled**: a poll that finds a run awaiting a
 detached/challenge outcome performs ONE short-timeout SDK call
 (`pollResult`/`waitForResult` with `timeout=2`), treats the SDK timeout as
@@ -206,9 +232,10 @@ endpoints above; the family-specific points:
   `awaiting_customer` → `status:"waiting_person"` and nothing is touched (the next
   poll after the phone answer resumes automatically); `completed` → the decrypted
   `answers` (via `flowRunAnswers`) and, for the contract fixture, the `document`
-  (downloaded via `flowRunDocument`) are written. `calls` names the exact SDK
-  methods (`identity`, `triggerFlowRun`, `flowRun`, `processFlowRun`,
-  `flowRunAnswers`, `flowRunDocument`).
+  (downloaded via `flowRunDocument`) are written. `calls` traces the SDK methods in
+  order — client construction, `identity`, `connection`, `triggerFlowRun`,
+  `flowRun`, `processFlowRun`, `flowRunAnswers`, `flowRunDocument` — in the entry
+  shape described under `GET /api/runs/{runId}` above.
 - **`GET /callback`** is identity-only — a flow run has no OAuth consent redirect.
 
 ## Company-data family (#483)
