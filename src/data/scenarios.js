@@ -168,7 +168,7 @@ export const PORTAL_FORMS = {
 // The three OAuth-app answers that are identical on every identity scenario live once
 // (standards §1) — the redirect URI above all, which is the one that most often goes wrong.
 const REDIRECT_URIS_SETTING =
-  'One line: http://localhost:8091/callback — or http://<the address you opened this page on>:8091/callback when you drive the example from a phone. The backend writes the origin YOUR BROWSER used into the config file, so the two must match; add both lines if you use both. Adjust the port if you set PORT.';
+  'One line, matching the address THIS page is open on: http://localhost:8091/callback, or http://127.0.0.1:8091/callback, or http://<your-lan-ip>:8091/callback when you drive the example from a phone. The backend writes the origin your browser used into the config file and never substitutes a default, so the two must match. Beware that localhost and 127.0.0.1 are DIFFERENT origins — for redirect matching and for this page’s saved settings alike, so a flow that comes back on the other spelling lands on a page whose settings were never there. Registering both lines makes either one work, but that is a convenience, not a remedy for switching spelling mid-flow: open the example on one address and stay on it. Adjust the port if you set PORT.';
 
 const APP_NAME_SETTING =
   'Anything — it is only the name the person sees on the consent screen. “Example test suite” is fine.';

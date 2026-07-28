@@ -133,7 +133,7 @@ tarball checksum for consumers:
 ```
 npm ci && npm run build
 tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf - -C dist . | gzip -n -9 > dist.tar.gz
-gh release create v0.6.2 dist.tar.gz --title v0.6.2 --notes "Example suite frontend — contract v3"
+gh release create v0.6.3 dist.tar.gz --title v0.6.3 --notes "Example suite frontend — contract v3"
 shasum -a 256 dist.tar.gz
 ```
 
@@ -153,7 +153,7 @@ the pins. Verify with `shasum -a 256` after a clean rebuild before publishing.
 what each consuming SDK example records in its `frontend.lock`:
 
 ```json
-{ "tag": "v0.6.2", "sha256": "<the sha256 printed above>" }
+{ "tag": "v0.6.3", "sha256": "<the sha256 printed above>" }
 ```
 
 On first run an SDK example downloads exactly that release asset, verifies the

@@ -66,6 +66,9 @@ via the data `Client`. Any browser-sent PEM is written to `.runtime/config/keys/
 SDK config fields (the authorize base, one-time claims, share code, context) go
 to a sibling `.runtime/config/{id}.meta.json`. Returns `{ok:true, configPath}`
 (the relative path, for display/inspection). Idempotent (re-save overwrites).
+`oauth_redirect_uri` is derived from THIS request's `Host` header and from
+nothing else; a request carrying no `Host` is refused with
+`400 {error:"no_origin — …"}` and nothing is written (#574).
 This is the "settings received from the frontend → written to a local config
 file" step; `/start` then runs off it.
 
@@ -88,7 +91,10 @@ its run.
 
 ### `GET /callback` *(identity family only)*
 
-The registered redirect URI (`http://localhost:8091/callback`). Handles BOTH
+The registered redirect URI — `http://{host}/callback`, where `{host}` is the
+origin the browser actually reached the backend on (`localhost:8091`,
+`127.0.0.1:8091`, `<lan-ip>:8091`, …). The backend derives it from the request's
+own `Host` header and never substitutes a default (#574). Handles BOTH
 delivery shapes: `?code=…&state=…` (complete via the SDK — `completeSignIn` — or
 via the OIDC library for scenarios 5/6) and `?enrolled=true&state=…` (the
 redirect-leg enrollment outcome, #436 — nothing to exchange; the outcome is
