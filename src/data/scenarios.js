@@ -430,7 +430,7 @@ export const SCENARIOS = [
     id: 4,
     kind: 'runnable',
     title: 'Connect (stay-connected)',
-    summary: 'Mode connect keeps a live, auto-updating record; live values are encrypted per-service and read via the service data client.',
+    summary: 'Mode connect keeps a live, auto-updating record; showing the DECRYPTED claim values from userinfo needs the OAuth app’s private key, and the connection’s live values are separately encrypted per-service and read via the service data client.',
     readmeChapter: 'Connect (stay-connected)',
     runButton: 'Connect and read live values',
     portalSetup: [
@@ -444,7 +444,7 @@ export const SCENARIOS = [
           service: 'SELECT the service you just created — this is the one setting connect mode cannot do without: an app carrying no service is refused with oauth.connect_no_service. Pick the entry labelled “<name> (enables connect mode)”; one labelled “business-only, no live link” has its Audience on Businesses and no person can connect through it.',
           confidential: CONFIDENTIAL_SETTING,
           require2fa: REQUIRE_2FA_OFF_SETTING,
-          claimsDelivery: 'Leave it on “Encrypted” (the default). connect mode delivers no claim values through the token at all — the person’s live values come back over the company-data API, encrypted to the SERVICE key, which is why the input below is the service PEM and not the app’s. Switching to Plaintext is for standards-only OIDC relying parties and would disable a live link if you later used one.',
+          claimsDelivery: 'Leave it on “Encrypted” (the default), though on this leg the setting is not consulted at all: connect mode delivers the consented claim values through userinfo as app-key ciphertext too — the same route one_time and oidc use — which is why the OAuth app private key is required above. The connection’s live values are a separate thing again: they come back over the company-data API, encrypted to the SERVICE key, which is why the service PEM below is also needed. The control exists for the OIDC leg (scenarios 5 and 6).',
           claimConfig: 'Leave every box unticked and every “Stay-connected field” on “Not linkable”. Those are the OIDC leg’s smaller, per-claim version of this scenario; mode=connect runs the full company connect instead, so the person is asked about your service’s own request fields and no binding is consulted.'
         }
       },
@@ -454,6 +454,18 @@ export const SCENARIOS = [
     fields: [
       { key: 'oauthClientId', label: 'OAuth app client id (connect consent)', type: 'text' },
       { key: 'oauthClientSecret', label: 'OAuth app client secret', type: 'secret' },
+      {
+        key: 'oauthPrivateKeyPem',
+        label: 'OAuth app private key (PEM)',
+        type: 'pem',
+        hint: 'Decrypts the consented claim values connect delivers through userinfo — the same app-key route one_time and oidc use. Downloaded with the download button on the app’s row in the OAuth apps list. Distinct from the SERVICE private key below, which decrypts the connection’s separate LIVE values read back over the company-data API.'
+      },
+      {
+        key: 'oauthKeyPassphrase',
+        label: 'Private key passphrase',
+        type: 'passphrase',
+        hint: 'Shown ONCE, in the same panel as the client secret, when the app is created — it decrypts the private key above and is not recoverable, so save it then.'
+      },
       { key: 'clientId', label: 'Service data client id (live values)', type: 'text' },
       { key: 'clientSecret', label: 'Service data client secret', type: 'secret' },
       {
