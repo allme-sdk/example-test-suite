@@ -73,7 +73,7 @@ npm run check
 An earlier version iterated `scenario.portalSetup || []`, so *undeclared* produced
 zero gaps — the check exited 0 with a smaller scenario count and the panel rendered
 nothing, which let a future edit silently undo the whole point. There is now no
-empty value that reads as complete, and the success line states the total (`All 14
+empty value that reads as complete, and the success line states the total (`All 13
 scenarios declared.`) so the count cannot shrink quietly. Every scenario today
 lists forms; the opt-out exists so a future portal-free scenario has to **say** so.
 

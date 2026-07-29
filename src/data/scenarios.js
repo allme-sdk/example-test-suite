@@ -1,4 +1,6 @@
-// The eight identity scenarios as DATA (spec §4). Input schemas match §4:
+// The identity scenarios as DATA (spec §4): ids 1-5, 7-8 — OIDC has a single
+// scenario, id 5; there is no OIDC-leg equivalent of the detached "continue on
+// your phone" mode. Input schemas match §4:
 //  - scenario 3 adds the OAuth app PRIVATE KEY (PEM file-picker) + passphrase
 //  - scenario 4 lists the DATA-CLIENT id/secret alongside the SERVICE PEM
 //  - scenario 7 is a GUIDE card (no run button) — checklist + links to 1 and 5
@@ -7,7 +9,8 @@
 //
 // The grid renders only ids present in GET /api/meta and honors each scenario's
 // `kind` from meta (runnable | guide). The `kind` below is the design default;
-// meta is authoritative at render time.
+// meta is authoritative at render time. A gap at id 6 is harmless: the grid
+// only ever renders ids the backend lists, never a contiguous range.
 //
 // Advanced inputs default to the DEPLOYED platform (spec §5, owner decision:
 // pre-launch, the cluster is the test environment).
@@ -186,11 +189,11 @@ const SIGNIN_APP_SETTINGS = {
   service: 'Leave it on “No service (sign-in / one-time only)”. A service matters only to connect mode (scenario 4) and to the 2fa_enroll step (scenario 8); picking one here changes nothing this scenario does.',
   confidential: CONFIDENTIAL_SETTING,
   require2fa: REQUIRE_2FA_OFF_SETTING,
-  claimsDelivery: 'Leave it on “Encrypted” (the default). mode=signin asks for no claim values, so neither setting delivers anything; this control only bites on scenarios 5 and 6.',
+  claimsDelivery: 'Leave it on “Encrypted” (the default). mode=signin asks for no claim values, so neither setting delivers anything; this control only bites on scenario 5.',
   claimConfig: 'Leave every Required / Verified-only box unticked and every “Stay-connected field” on “Not linkable”. They apply only to claims requested through the standard OIDC scopes, and mode=signin requests none.'
 };
 
-// Scenarios 5 and 6 — the OIDC leg reads its claims out of the id_token, so the delivery
+// Scenario 5 — the OIDC leg reads its claims out of the id_token, so the delivery
 // mode is load-bearing rather than cosmetic.
 const OIDC_APP_SETTINGS = {
   name: APP_NAME_SETTING,
@@ -402,7 +405,7 @@ export const SCENARIOS = [
           service: 'Leave it on “No service (sign-in / one-time only)” — the portal’s own wording for exactly this scenario. Selecting a service does not enable or change one_time; it only makes connect mode (scenario 4) possible.',
           confidential: CONFIDENTIAL_SETTING,
           require2fa: REQUIRE_2FA_OFF_SETTING,
-          claimsDelivery: 'Leave it on “Encrypted” (the default), though on this leg the setting is not consulted at all: one_time values ALWAYS reach you as app-key ciphertext through userinfo, which is why this scenario needs the private-key PEM below. The control exists for the OIDC leg (scenarios 5 and 6).',
+          claimsDelivery: 'Leave it on “Encrypted” (the default), though on this leg the setting is not consulted at all: one_time values ALWAYS reach you as app-key ciphertext through userinfo, which is why this scenario needs the private-key PEM below. The control exists for the OIDC leg (scenario 5).',
           claimConfig: 'Leave every box unticked and every “Stay-connected field” on “Not linkable”. The one-time leg never reads this block: only the claims the request itself names apply (this example asks for email + phone). It exists for standards-only relying parties that cannot express requirements in an OIDC request, and the stay-connected binding is an OIDC-leg feature that is never offered here.'
         }
       }
@@ -444,7 +447,7 @@ export const SCENARIOS = [
           service: 'SELECT the service you just created — this is the one setting connect mode cannot do without: an app carrying no service is refused with oauth.connect_no_service. Pick the entry labelled “<name> (enables connect mode)”; one labelled “business-only, no live link” has its Audience on Businesses and no person can connect through it.',
           confidential: CONFIDENTIAL_SETTING,
           require2fa: REQUIRE_2FA_OFF_SETTING,
-          claimsDelivery: 'Leave it on “Encrypted” (the default), though on this leg the setting is not consulted at all: connect mode delivers the consented claim values through userinfo as app-key ciphertext too — the same route one_time and oidc use — which is why the OAuth app private key is required above. The connection’s live values are a separate thing again: they come back over the company-data API, encrypted to the SERVICE key, which is why the service PEM below is also needed. The control exists for the OIDC leg (scenarios 5 and 6).',
+          claimsDelivery: 'Leave it on “Encrypted” (the default), though on this leg the setting is not consulted at all: connect mode delivers the consented claim values through userinfo as app-key ciphertext too — the same route one_time and oidc use — which is why the OAuth app private key is required above. The connection’s live values are a separate thing again: they come back over the company-data API, encrypted to the SERVICE key, which is why the service PEM below is also needed. The control exists for the OIDC leg (scenario 5).',
           claimConfig: 'Leave every box unticked and every “Stay-connected field” on “Not linkable”. Those are the OIDC leg’s smaller, per-claim version of this scenario; mode=connect runs the full company connect instead, so the person is asked about your service’s own request fields and no binding is consulted.'
         }
       },
@@ -487,21 +490,6 @@ export const SCENARIOS = [
     runButton: 'Sign in with OIDC',
     portalSetup: [{ form: 'oauth-app', settings: OIDC_APP_SETTINGS }],
     prerequisites: [],
-    fields: [
-      { key: 'oauthClientId', label: 'OAuth app client id (OIDC RP)', type: 'text' },
-      { key: 'oauthClientSecret', label: 'OAuth app client secret', type: 'secret' },
-      ...ADVANCED
-    ]
-  },
-  {
-    id: 6,
-    kind: 'runnable',
-    title: 'OIDC — continue on your phone',
-    summary: 'The desktop consent page polls the flow status and completes by itself once the person approves in the app (#431).',
-    readmeChapter: 'OIDC — continue on your phone',
-    runButton: 'Start OIDC (continue on phone)',
-    portalSetup: [{ form: 'oauth-app', settings: OIDC_APP_SETTINGS }],
-    prerequisites: [PHONE_PREREQ],
     fields: [
       { key: 'oauthClientId', label: 'OAuth app client id (OIDC RP)', type: 'text' },
       { key: 'oauthClientSecret', label: 'OAuth app client secret', type: 'secret' },

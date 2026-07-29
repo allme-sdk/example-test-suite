@@ -98,7 +98,7 @@ origin the browser actually reached the backend on (`localhost:8091`,
 `127.0.0.1:8091`, `<lan-ip>:8091`, …). The backend derives it from the request's
 own `Host` header and never substitutes a default (#574). Handles BOTH
 delivery shapes: `?code=…&state=…` (complete via the SDK — `completeSignIn` — or
-via the OIDC library for scenarios 5/6) and `?enrolled=true&state=…` (the
+via the OIDC library for scenario 5) and `?enrolled=true&state=…` (the
 redirect-leg enrollment outcome, #436 — nothing to exchange; the outcome is
 recorded). Writes the outcome to the run stash, then 302 →
 `/?scenario={id}&run={runId}` so the frontend resumes the right card.
