@@ -275,13 +275,25 @@ endpoints above; the family-specific points:
   data client (`client_id`/`client_secret`), the service PEM (`service_private_key`
   path + `key_passphrase`), and `api_url`, written to the canonical config file the
   run executes off (built via `Client::fromConfig` → `Config::fromFile`). The
-  demo-only run parameters — the published `flow_id`, the `connection_id`, and the
-  `fixture` choice (`"info" | "contract"`) — go to the sibling
-  `config/{id}.meta.json`, NOT the SDK config.
-- **`POST /api/scenarios/flow:run/start`** — builds the flow bindings
-  (`company →` `Client::identity()['company_user_id']`; `customer →`
-  `Connection::$personId` for the configured connection — fail clearly on a missing
-  connection / null person id), calls `triggerFlowRun(flowId, connectionId,
+  demo-only run parameters — `flow_name` + `flow_version` (the flow's published
+  version), the person's `share_code`, and the `fixture` choice
+  (`"info" | "contract"`) — go to the sibling `config/{id}.meta.json`, NOT the SDK
+  config. Neither the flow id nor the connection id is ever collected: both are
+  internal identifiers, so `/start` resolves them.
+- **`POST /api/scenarios/flow:run/start`** — resolves `flow_name` + `flow_version`
+  to a `flow_id` via `Client::requestFields()` (matched on the additive
+  `flow_name`/`flow_version` tags flow-answerable rows carry) and `share_code` to a
+  connection via `Client::connections()` (matched on `Connection::$shareCode`).
+  The flow pair is not guaranteed unique — nothing constrains a service to distinct
+  flow names, and `requestFields()` can therefore surface more than one distinct
+  `flow_id` for the same name+version — so flow resolution fails clearly rather
+  than picking a candidate: `start_failed` on zero OR more than one matching flow
+  (the two cases carry different messages so a developer can tell "not found" from
+  "ambiguous, go rename one"). Share codes identify people uniquely, so connection
+  resolution returns its single possible match or `connection_error` when none exists.
+  Then builds the flow bindings (`company →`
+  `Client::identity()['company_user_id']`; `customer →` `Connection::$personId` for
+  the resolved connection), calls `triggerFlowRun(flowId, connectionId,
   bindings)`, stores the returned platform `flowRunId` INSIDE the demo run file
   (never a separate browser input), and returns `{runId, action:{"type":"none"}}`.
   `409 not_configured` with no saved config, as elsewhere.

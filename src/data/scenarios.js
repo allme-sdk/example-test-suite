@@ -606,7 +606,7 @@ export const SCENARIOS = [
         settings: {
           newFlowName: 'SKIP it. That row authors a brand-new empty flow; this scenario runs a ready-made package. Only use it if you want to build a flow by hand instead.',
           import: 'Press “Import” and pick ONE of the two .zip packages shipped with the example you started — they sit in its fixtures/ folder — the info-gathering one or the contract one. Whichever you pick, pick the same one in the “Fixture” input below. Import drops you straight into the flow builder on the imported DRAFT.',
-          publish: 'Press “Publish” at the top of the builder. An imported flow is a draft and a run cannot be triggered against a draft, so skipping this is the single most common way this scenario fails to start. Publishing appends a version; the flow id in the address bar does not change.'
+          publish: 'Press “Publish” at the top of the builder. An imported flow is a draft and a run cannot be triggered against a draft, so skipping this is the single most common way this scenario fails to start. Note the flow’s NAME and the “Published vN” it shows once you have — that name and number are the two inputs below; nothing in this scenario needs the flow id from the address bar.'
         }
       }
     ],
@@ -623,8 +623,9 @@ export const SCENARIOS = [
         hint: 'The flow answers + document copy are service-key-encrypted; this key decrypts them. Read into localStorage; on Save written under .runtime/config/keys (0600) and referenced by path in the SDK config file.'
       },
       { key: 'keyPassphrase', label: 'Service key passphrase', type: 'passphrase' },
-      { key: 'flowId', label: 'Published flow id', type: 'text', hint: 'The id of the flow you imported AND published in the portal — the last segment of the flow builder’s address after you publish (…/services/<serviceId>/flows/<flowId>). Copy it from the address bar; there is no “copy id” button.' },
-      { key: 'connectionId', label: 'Connection id', type: 'text', hint: 'The connection to the demo person — the flow’s customer party binds to this connection’s person. The portal shows no per-service list of connected people, so this does NOT come from the portal: run the “Read connected people” scenario first and open its Raw view — each entry’s connectionId is the value this scenario wants.' },
+      { key: 'flowName', label: 'Flow name', type: 'text', hint: 'The name you gave the flow when you created or imported it — the same name the flows list in the portal shows next to it. The backend looks it up via requestFields(), which is the only company-data surface that ever names a flow; it does not come from a URL.' },
+      { key: 'flowVersion', label: 'Published version', type: 'text', hint: 'The “Published vN” number the portal shows next to the flow’s name once you have published it (the flow builder’s title bar shows the same number). Paired with the name above to resolve the flow’s id. If multiple flows share both values, the backend refuses to guess and asks you to rename one.' },
+      { key: 'shareCode', label: 'Person share code', type: 'text', hint: 'The connected demo person’s own 6-character share code — the one they read off their own app, not a portal id. The backend looks it up via connections() and uses whichever connection carries this code; the person must already be connected to this service.' },
       {
         key: 'fixture',
         label: 'Fixture',
