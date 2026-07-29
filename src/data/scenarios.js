@@ -485,7 +485,7 @@ export const SCENARIOS = [
     id: 5,
     kind: 'runnable',
     title: 'OIDC login',
-    summary: 'Standard OIDC: discovery → PKCE → id_token verified by the pinned third-party OIDC library (the #314 compliance demo).',
+    summary: 'Standard OIDC: discovery → PKCE → id_token verified by the pinned third-party OIDC library.',
     readmeChapter: 'OIDC login',
     runButton: 'Sign in with OIDC',
     portalSetup: [{ form: 'oauth-app', settings: OIDC_APP_SETTINGS }],
