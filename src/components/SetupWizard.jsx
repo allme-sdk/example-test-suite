@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Check, ChevronDown, ChevronRight, FileKey, Save, Upload, X, AlertCircle } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Copy, FileKey, Save, Upload, X, AlertCircle } from 'lucide-react';
 import * as ui from '../ui.js';
 import PortalSetup from './PortalSetup.jsx';
 
@@ -60,20 +60,72 @@ function PemField({ field, value, onChange }) {
   );
 }
 
+/**
+ * A password input's characters can't be read by eye, so this is the only way to move a
+ * secret from one scenario's saved value into another.
+ *
+ * Disabled on an empty value rather than just left clickable: a field with nothing typed
+ * into it still renders this button, and a click that silently "succeeds" on an empty
+ * string would look identical to a click that copied something real.
+ *
+ * The clipboard write is permission-gated and can fail (denied permission, an insecure
+ * context). A failed write must not look like a missed click: the icon turns into a red
+ * X and a message names the failure, both for 3s — longer than the checkmark's 1.5s,
+ * since a warning needs more time to register than a confirmation does.
+ */
+function CopyButton({ value }) {
+  const [state, setState] = useState('idle'); // 'idle' | 'copied' | 'failed'
+  const hasValue = typeof value === 'string' && value.trim().length > 0;
+  return (
+    <>
+      <button
+        type="button"
+        disabled={!hasValue}
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(value);
+            setState('copied');
+            setTimeout(() => setState('idle'), 1500);
+          } catch {
+            setState('failed');
+            setTimeout(() => setState('idle'), 3000);
+          }
+        }}
+        className="p-2 rounded-lg bg-surface border border-line hover:bg-hover shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+        aria-label="Copy"
+      >
+        {state === 'copied' ? (
+          <Check className="w-4 h-4 text-emerald-500" />
+        ) : state === 'failed' ? (
+          <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+        ) : (
+          <Copy className="w-4 h-4 text-faint" />
+        )}
+      </button>
+      {state === 'failed' && (
+        <span className="text-xs text-red-600 dark:text-red-400">Copy failed — select and copy manually</span>
+      )}
+    </>
+  );
+}
+
 function TextField({ field, value, onChange, invalid }) {
   const type = field.type === 'secret' || field.type === 'passphrase' ? 'password' : 'text';
   return (
     <div>
       <label className={ui.label}>{field.label}</label>
-      <input
-        className={`${ui.input} ${invalid ? ui.inputInvalid : ''}`}
-        type={type}
-        value={value || ''}
-        placeholder={field.default || ''}
-        onChange={(e) => onChange(e.target.value)}
-        autoComplete="off"
-        spellCheck={false}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          className={`${ui.input} ${invalid ? ui.inputInvalid : ''}`}
+          type={type}
+          value={value || ''}
+          placeholder={field.default || ''}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <CopyButton value={value} />
+      </div>
       {field.hint && <span className={ui.hint}>{field.hint}</span>}
     </div>
   );
