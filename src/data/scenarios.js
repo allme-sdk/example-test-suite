@@ -556,9 +556,9 @@ export const SCENARIOS = [
       {
         form: 'account-client',
         settings: {
-          name: 'Anything — “number-matching toggle” says what you made it for. This client exists ONLY to flip number matching, because the portal has no control for it.',
+          name: 'Anything — “number-matching toggle” says what you made it for. This client exists ONLY to flip number matching, because the portal has no control for it. NONE of this form’s output goes into the suite below: there is no field for it here, on purpose, because you use its id and secret directly in the curl commands below and never again afterwards.',
           capabilities: 'Tick “Service management” and nothing else. That is the group granting /api/services*, which is what PUT /api/services/{id}/number-matching lives under. Leave “Company profile & fields”, “Customer connections & feed” and especially “Sign-in apps (OAuth)” unticked — none of them is needed, and the last one is powerful.',
-          redirectUri: 'Leave it EMPTY. It enables the authorization-code flow, and you want the client_credentials one: POST /oauth2/token with grant_type=client_credentials and this client’s id/secret, then send the resulting bearer token on the PUT.'
+          redirectUri: 'Leave it EMPTY. It enables the authorization-code flow, and you want the client_credentials one instead — entirely with curl or similar, OUTSIDE this suite: POST /oauth2/token with grant_type=client_credentials and this client’s id/secret, then send the resulting bearer token on PUT /api/services/{id}/number-matching yourself. Toggling number matching this way is optional — the challenge and enrollment below work with it left off — and nothing in the suite stores or needs either credential or the token.'
         }
       }
     ],
