@@ -276,6 +276,18 @@ const CD_PORTAL_SETUP = [
   { form: 'service-requests', settings: SERVICE_REQUESTS_SETTINGS }
 ];
 
+// The six document/contract types the documents scenario can create. Order and labels here are
+// the single source the checkboxes render from, and each value is the selection key saved by the
+// setup form.
+export const DOCUMENT_TYPE_OPTIONS = [
+  { value: 'broadcast_json', label: 'Broadcast plaintext JSON (no target)' },
+  { value: 'broadcast_pdf', label: 'Broadcast PDF file (no target)' },
+  { value: 'per_person_file', label: 'Per-person NON-private file' },
+  { value: 'per_person_private', label: 'Per-person PRIVATE file (lock → reveal)' },
+  { value: 'contract_signature', label: 'CONTRACT requiring SIGNATURE' },
+  { value: 'contract_acceptance', label: 'CONTRACT requiring ACCEPTANCE' }
+];
+
 const COMPANYDATA_SCENARIOS = [
   {
     id: 'companydata:read',
@@ -344,8 +356,8 @@ const COMPANYDATA_SCENARIOS = [
   {
     id: 'companydata:documents',
     kind: 'runnable',
-    title: 'Create the six document types',
-    summary: 'Client::createDocument() creates all six document/contract types — broadcast JSON/PDF, per-person file, private file, and contracts requiring signature / acceptance.',
+    title: 'Create document types',
+    summary: 'Client::createDocument() for the document/contract types you tick below — broadcast JSON/PDF, per-person file, private file, and contracts requiring signature / acceptance. Every box starts ticked, so an untouched run still creates all six.',
     readmeChapter: 'Company data — documents',
     runButton: 'Create documents',
     portalSetup: CD_PORTAL_SETUP,
@@ -353,6 +365,14 @@ const COMPANYDATA_SCENARIOS = [
     fields: [
       ...CD_SERVICE_FIELDS,
       { key: 'shareCode', label: 'Target person share code', type: 'text', hint: 'The connected person the per-person / private / contract documents target (broadcast documents ignore it).' },
+      {
+        key: 'documentTypes',
+        label: 'Document types to create',
+        type: 'checkboxes',
+        options: DOCUMENT_TYPE_OPTIONS,
+        default: DOCUMENT_TYPE_OPTIONS.map((o) => o.value),
+        hint: 'Six independent choices, all ticked by default. Untick any you don’t want created — the run creates exactly the ones left ticked, and the results panel lists only what it actually created.'
+      },
       ...CD_ADVANCED
     ]
   }
@@ -664,10 +684,12 @@ export function familyOf(id) {
   return 'identity'; // the v1 integer ids
 }
 
-// A runnable scenario is "ready" when every required (non-advanced) field has a
-// value. Advanced inputs always have a default, so they never gate readiness.
+// A runnable scenario is "ready" when every required field has a value. "Required" excludes
+// advanced inputs AND any field that carries its own `default` (e.g. the documents scenario's
+// type-selection checkboxes, defaulting to all six) — both always have a value even untouched,
+// so neither can gate readiness.
 export function isScenarioReady(scenario, values) {
-  const required = scenario.fields.filter((f) => !f.advanced);
+  const required = scenario.fields.filter((f) => !f.advanced && f.default === undefined);
   return required.every((f) => {
     const v = values[f.key];
     return typeof v === 'string' ? v.trim().length > 0 : Boolean(v);

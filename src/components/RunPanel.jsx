@@ -192,7 +192,8 @@ function Events({ events }) {
   );
 }
 
-// companydata:documents — the six created documents.
+// companydata:documents — the documents actually created this run (as many as were selected in
+// setup, never assumed to be all six — a partial selection must not read as a partial failure).
 function Docs({ docs }) {
   if (!docs.length) return <div className={ui.sub}>No documents created.</div>;
   return (

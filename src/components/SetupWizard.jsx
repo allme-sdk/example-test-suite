@@ -131,6 +131,40 @@ function TextField({ field, value, onChange, invalid }) {
   );
 }
 
+/**
+ * A group of independent checkboxes for a field whose value is an array of selected option
+ * values (the documents scenario's document-type picker). `value` may arrive as '' when the
+ * field has never been touched — renderField's convention for "no value yet" — so the checked
+ * set falls back to the field's own `default` rather than rendering everything unticked.
+ */
+function CheckboxesField({ field, value, onChange }) {
+  const selected = Array.isArray(value) ? value : field.default || [];
+  function toggle(optionValue) {
+    onChange(
+      selected.includes(optionValue) ? selected.filter((v) => v !== optionValue) : [...selected, optionValue]
+    );
+  }
+  return (
+    <div>
+      <label className={ui.label}>{field.label}</label>
+      <div className="space-y-1.5">
+        {(field.options || []).map((o) => (
+          <label key={o.value} className="flex items-center gap-2 text-sm text-body cursor-pointer">
+            <input
+              type="checkbox"
+              className="rounded border-line"
+              checked={selected.includes(o.value)}
+              onChange={() => toggle(o.value)}
+            />
+            {o.label}
+          </label>
+        ))}
+      </div>
+      {field.hint && <span className={ui.hint}>{field.hint}</span>}
+    </div>
+  );
+}
+
 function SelectField({ field, value, onChange, invalid }) {
   return (
     <div>
@@ -155,6 +189,9 @@ function renderField(field, values, setValue, showInvalid) {
   const onChange = (v) => setValue(field.key, v);
   if (field.type === 'pem') {
     return <PemField key={field.key} field={field} value={value} onChange={onChange} />;
+  }
+  if (field.type === 'checkboxes') {
+    return <CheckboxesField key={field.key} field={field} value={value} onChange={onChange} />;
   }
   const invalid = showInvalid && !field.advanced && !(typeof value === 'string' && value.trim().length);
   if (field.type === 'select') {
