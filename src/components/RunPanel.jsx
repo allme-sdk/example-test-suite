@@ -32,10 +32,35 @@ function RawToggle({ value }) {
   );
 }
 
+// Each decrypted flow answer is shown paired with the ciphertext it was decrypted
+// from — the same row, never two separate lists — so a reader can see the decrypt
+// actually ran on real bytes rather than take it on faith. A slug with no ciphertext
+// (nothing came back encrypted for it) says so plainly instead of hiding the row.
+function AnswerRows({ answers }) {
+  return (
+    <div className="mt-2 space-y-2">
+      {answers.map((a, i) => (
+        <div key={i} className="rounded-lg border border-line bg-surface p-3 space-y-1">
+          <div className="text-xs font-medium text-muted">{a.slug}</div>
+          <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm items-baseline">
+            <span className={ui.faint}>Ciphertext</span>
+            <span className={`${ui.code} break-all`}>
+              {a.cipher ? a.cipher : <span className={ui.faint}>(none returned for this slug)</span>}
+            </span>
+            <span className={ui.faint}>Decrypted</span>
+            <span className={`${ui.code} break-words`}>{fmtVal(a.value)}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Flow family: the result is {status, steps[], answers?, document?} and
 // accumulates across polls. Rendered distinctly from the generic key→value area:
 // a live step log (each type-checked submit, incl. the deliberate reject→accept),
-// a waiting-on-phone banner, then the decrypted answers + document status.
+// a waiting-on-phone banner, then the decrypted answers (each paired with the
+// ciphertext it came from) + document status.
 function FlowResult({ result }) {
   const steps = Array.isArray(result.steps) ? result.steps : [];
   const answers = Array.isArray(result.answers) ? result.answers : null;
@@ -71,7 +96,8 @@ function FlowResult({ result }) {
       {answers && (
         <div>
           <h4 className={ui.h4}>Decrypted answers</h4>
-          <KeyVal rows={answers.map((a) => [a.slug, a.value])} />
+          <p className={ui.faint}>Each value next to the service-key ciphertext it was decrypted from.</p>
+          <AnswerRows answers={answers} />
         </div>
       )}
       {doc && (

@@ -289,7 +289,7 @@ endpoints above; the family-specific points:
   `"pending"|"done"|"failed"` status (`"done"` once the flow completes, `"failed"`
   on error). Its `result` is the pinned flow shape and **accumulates across ordinary
   polls** (no long-poll): `{status: "running"|"waiting_person"|"completed",
-  steps: [{slug, type, submitted, accepted, error?}], answers?: [{slug, value}],
+  steps: [{slug, type, submitted, accepted, error?}], answers?: [{slug, value, cipher}],
   document?: {status, downloaded}}`. Each poll that finds the platform run
   `awaiting_company` drives ONE step via `processFlowRun` (the designated `email`
   step is submitted once with a canned invalid value → `ValidationError` →
@@ -297,10 +297,13 @@ endpoints above; the family-specific points:
   `awaiting_customer` → `status:"waiting_person"` and nothing is touched (the next
   poll after the phone answer resumes automatically); `completed` → the decrypted
   `answers` (via `flowRunAnswers`) and, for the contract fixture, the `document`
-  (downloaded via `flowRunDocument`) are written. `calls` traces the SDK methods in
-  order — client construction, `identity`, `connection`, `triggerFlowRun`,
-  `flowRun`, `processFlowRun`, `flowRunAnswers`, `flowRunDocument` — in the entry
-  shape described under `GET /api/runs/{runId}` above.
+  (downloaded via `flowRunDocument`) are written. Each answer's `cipher` is the SAME
+  row's still-encrypted wrapper, read straight off the run's unchanged raw
+  (undecrypted) answer list alongside the `flowRunAnswers` result — the pairing is what lets the panel show
+  that the cleartext really came from that ciphertext rather than assert it. `calls`
+  traces the SDK methods in order — client construction, `identity`, `connection`,
+  `triggerFlowRun`, `flowRun`, `processFlowRun`, `flowRunAnswers`, `flowRunDocument`
+  — in the entry shape described under `GET /api/runs/{runId}` above.
 - **`GET /callback`** is identity-only — a flow run has no OAuth consent redirect.
 
 ## Company-data family (#483)
