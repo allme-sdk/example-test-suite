@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
- * #557 — every portal control a scenario sends you to must be explained.
+ * Every portal control a scenario sends you to must be explained.
  *
  * A scenario's own inputs are complete by construction (the setup form IS generated from
- * `fields`). The portal half is not: it describes forms in another product, so before this
- * check it drifted and under-specified with nothing to catch it — scenario 1 named two of
- * the OAuth-app form's seven controls, and the OIDC scenarios named none of the one that
- * decides whether they display any claims at all.
+ * `fields`). The portal half is not: it describes forms in another product, so without this
+ * check it can drift and under-specify with nothing to catch it — a scenario could name only
+ * some of a form's controls, or omit the one control that decides whether an OIDC scenario
+ * displays any claims at all.
  *
  * So this asserts the same completeness for the portal half, at BOTH levels:
  *
  *  1. every scenario must DECLARE its portal setup — a non-empty list of forms, or an
  *     explicit `noPortalSetup('<why>')`. An absent, empty or reasonless declaration FAILS.
- *     It used to pass silently while merely shrinking the reported counts, which is the
- *     "nothing was checked" hole this whole check exists to close (#557 review pass 1);
+ *     Treating an omitted declaration as "zero gaps" would just shrink the reported counts
+ *     instead of failing — a "nothing was checked" hole this whole check exists to close;
  *  2. for every form a scenario names, every control in `PORTAL_FORMS` must carry a
  *     non-empty answer, and every answer must name a control the form has.
  *

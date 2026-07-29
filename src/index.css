@@ -1,17 +1,17 @@
 /*
  * The example test suite's stylesheet.
  *
- * #496: the brand tokens below are CARRIED VERBATIM from the allus portal
- * (`allus/src/index.css`) rather than re-derived, so the portal and the examples
- * cannot drift apart visually. `tailwind.config.js` and `postcss.config.js` are
- * likewise byte-identical copies of the portal's. Everything above the token
+ * The brand tokens below are CARRIED VERBATIM from the same design system used
+ * elsewhere in the product, rather than re-derived, so nothing here can drift
+ * visually out of sync. `tailwind.config.js` and `postcss.config.js` are
+ * likewise kept byte-identical to that source. Everything above the token
  * block is Tailwind; component styling lives in the JSX via the shared class
  * vocabulary in `src/ui.js`.
  *
- * Dark mode is `class`-based (the portal's setting). The suite has no theme
- * picker and never had one, so `src/theme.js` mirrors the OS preference onto the
- * root element — the same behaviour the old CSS module got from a
- * prefers-color-scheme media query, now expressed the portal's way.
+ * Dark mode is `class`-based. The suite has no theme picker and never had one,
+ * so `src/theme.js` mirrors the OS preference onto the root element — the same
+ * behaviour a prefers-color-scheme media query would give, now expressed
+ * through the `.dark` class instead.
  */
 
 @tailwind base;

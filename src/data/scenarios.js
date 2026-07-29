@@ -43,16 +43,16 @@ const FLOW_ADVANCED = [ADVANCED[0]];
 const PHONE_PREREQ =
   'A physical phone with the allme app, signed in as the demo person. It reaches the deployed platform naturally.';
 
-// ── The portal half of setup, per control (#557) ──────────────────────────────
+// ── The portal half of setup, per control ──────────────────────────────────────
 // A scenario's own inputs are complete BY CONSTRUCTION: `fields` below IS the form the
 // suite renders, so an input cannot exist without its `hint`. The portal half had no such
-// tie — `checklist` is free prose about forms in another product, so it drifted and
-// under-specified with nothing to catch it. #557: scenario 1 named two of the OAuth-app
-// form's SEVEN controls, and the two OIDC scenarios named none of the one control that
-// decides whether they show any claims at all.
+// tie — `checklist` is free prose about forms in another product, so it can drift and
+// under-specify with nothing to catch it: a scenario could name only some of a form's
+// controls, or omit the one control that decides whether an OIDC scenario shows any
+// claims at all.
 //
-// So PORTAL_FORMS is the CATALOG — every control each portal form actually renders, read
-// off `allus/src` — and a scenario declares `portalSetup: [{ form, settings }]` giving the
+// So PORTAL_FORMS is the CATALOG — every control each portal form actually renders — and
+// a scenario declares `portalSetup: [{ form, settings }]` giving the
 // intended value for EVERY control of every form it sends the reader to, including the
 // ones to leave alone. "Leave it empty" and "it does not matter here, because …" are
 // answers; silence is not. `portalSetupGaps()` reports what a scenario omitted (or named
@@ -191,7 +191,7 @@ const SIGNIN_APP_SETTINGS = {
 };
 
 // Scenarios 5 and 6 — the OIDC leg reads its claims out of the id_token, so the delivery
-// mode is load-bearing rather than cosmetic (this is the control #557 was filed over).
+// mode is load-bearing rather than cosmetic.
 const OIDC_APP_SETTINGS = {
   name: APP_NAME_SETTING,
   redirectUris: REDIRECT_URIS_SETTING,
@@ -202,7 +202,7 @@ const OIDC_APP_SETTINGS = {
   claimConfig: 'Leave both boxes unticked and the “Stay-connected field” on “Not linkable” for the documented run. They DO apply here — scope=openid profile email resolves to exactly the name and email claims this block configures — so ticking “Required” on Email makes the consent screen refuse a decline, and “Verified only” additionally demands a verified email field. The stay-connected binding needs Encrypted delivery AND a service; this app has neither.'
 };
 
-// ── company-data family (#483) ────────────────────────────────────────────────
+// ── company-data family ────────────────────────────────────────────────────────
 // The regular company-data surface companies use, through the service data client:
 // connections read, request-field definitions, the change feed, webhooks, documents.
 // Every company-data scenario uses the SERVICE role — the service PEM is loaded at
@@ -639,7 +639,7 @@ export const SCENARIOS = [
     ]
   },
   ...COMPANYDATA_SCENARIOS,
-  // ── Flow family (#484) ────────────────────────────────────────────────
+  // ── Flow family ─────────────────────────────────────────────────────────
   // A flow run needs no OAuth consent redirect (it drives the company party
   // via a data client + the service key), so its advanced block is API-URL only.
   {
@@ -705,7 +705,7 @@ export const SCENARIOS_BY_ID = SCENARIOS.reduce((acc, s) => {
   return acc;
 }, {});
 
-// ── scenario families (#494) ─────────────────────────────────────────────────
+// ── scenario families ────────────────────────────────────────────────────────
 // One backend now serves ALL families from one port, so the portal groups the grid
 // into a section per family. The family is derived from the scenario id: the
 // identity family kept its original bare integer ids (1–8, contract v1), the later
@@ -733,29 +733,29 @@ export function isScenarioReady(scenario, values) {
   });
 }
 
-// The one classification behind every "where am I" signal in the UI (#500): the
-// card badge in the grid AND the icon beside the scenario in the left nav read
-// this, so a scenario can never look ready in one place and not in the other.
+// The one classification behind every "where am I" signal in the UI: the card
+// badge in the grid AND the icon beside the scenario in the left nav read this,
+// so a scenario can never look ready in one place and not in the other.
 // `guide` | `ready` | `setup`.
 export function scenarioStatus(scenario, values) {
   if (scenario.kind === 'guide') return 'guide';
   return isScenarioReady(scenario, values) ? 'ready' : 'setup';
 }
 
-// ── portal-setup completeness (#557) ─────────────────────────────────────────
+// ── portal-setup completeness ─────────────────────────────────────────────────
 // The whole point of PORTAL_FORMS is that an unexplained portal control becomes
 // DETECTABLE instead of a matter of memory. This is the detector, and it is the ONE
 // implementation of the rule: `PortalSetup.jsx` renders its findings as a loud row and
 // `scripts/check-portal-setup.mjs` (run by `npm run check`, and by `prebuild` before
 // every release build) exits non-zero on any of them.
 //
-// ⚠ **ABSENCE IS A FINDING, NOT A PASS** (#557 review pass 1). The first version iterated
-// `scenario.portalSetup || []`, so a scenario with NO declaration produced zero gaps: the
-// check exited 0 while merely reporting a smaller scenario count, the UI rendered nothing,
-// and deleting a scenario's whole `portalSetup` silently restored the exact under-specified
-// state this issue exists to prevent. That is the "nothing was checked read as nothing is
-// wrong" defect class the project already refuses elsewhere (standards §4: `check-keys.js`
-// exits non-zero when no platform was present to check). So the declaration itself is
+// ⚠ **ABSENCE IS A FINDING, NOT A PASS**. Iterating `scenario.portalSetup || []` directly
+// would make a scenario with NO declaration produce zero gaps: the check would exit 0 while
+// merely reporting a smaller scenario count, the UI would render nothing, and deleting a
+// scenario's whole `portalSetup` would silently restore an under-specified state with
+// nothing to flag it. That is the "nothing was checked read as nothing is wrong" defect
+// class the project already refuses elsewhere (standards §4: `check-keys.js` exits
+// non-zero when no platform was present to check). So the declaration itself is
 // mandatory, and the ONLY way to say a scenario needs no portal work is to say it OUT LOUD
 // with `noPortalSetup('<why>')` — silence is not an answer at the declaration level either.
 //

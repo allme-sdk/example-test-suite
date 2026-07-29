@@ -1,13 +1,14 @@
 /**
- * #496 — the shared class vocabulary.
+ * The shared class vocabulary.
  *
- * Every string here is an idiom lifted from the allus portal (`allus/src`), not a new dialect:
- * the card, the primary/secondary button, the input, the badge and the headings are the portal's,
- * so the examples read as the same product. Naming them once keeps standards §1 honest — the
- * alternative is the same forty-character class string copied across six components, which is
- * exactly how two slightly-different button styles get born.
+ * Every string here names one consistent idiom, not a new dialect per component: the
+ * card, the primary/secondary button, the input, the badge and the headings each have
+ * exactly one class string, defined once, so the examples read as one product. Naming
+ * them here keeps standards §1 honest — the alternative is the same forty-character
+ * class string copied across six components, which is exactly how two slightly-different
+ * button styles get born.
  *
- * When the portal's look changes, this file is the one place to follow it.
+ * When the look needs to change, this file is the one place to do it.
  */
 
 /** Page surfaces */
@@ -15,7 +16,7 @@ export const card = 'bg-surface border border-line rounded-2xl shadow-sm';
 export const panel = `${card} p-6`;
 export const block = 'rounded-xl border border-line bg-surface-alt p-4';
 
-/** Buttons — portal: bg-brand-600/hover:bg-brand-700 for primary, border+hover:bg-hover otherwise */
+/** Buttons: bg-brand-600/hover:bg-brand-700 for primary, border+hover:bg-hover otherwise */
 export const btnBase =
   'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed transition-colors';
 export const btnPrimary = `${btnBase} bg-brand-600 hover:bg-brand-700 text-white`;
@@ -57,6 +58,6 @@ export const code = 'font-mono text-[0.8125rem] text-heading';
 export const pre =
   'mt-2 max-h-80 overflow-auto rounded-lg bg-surface-inset border border-line p-3 font-mono text-xs text-body whitespace-pre';
 
-/** The portal's small square icon tile */
+/** Small square icon tile */
 export const iconTile =
   'w-9 h-9 rounded-lg bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-300 flex items-center justify-center shrink-0';

@@ -34,8 +34,8 @@ export default function App() {
   // Scenarios to render: only those present in /api/meta AND known to the
   // design data; each carries meta's authoritative `kind`. Rendered in the
   // backend's declared /api/meta order — stable for both integer identity ids
-  // and string companydata:* ids (a numeric id-subtraction sort would NaN on the
-  // namespaced string ids, #483).
+  // and string companydata:* ids, where a numeric id-subtraction sort would NaN
+  // on the namespaced string ids.
   const scenarios = useMemo(() => {
     if (!meta) return [];
     const order = new Map(meta.scenarios.map((m, i) => [String(m.id), i]));
@@ -54,9 +54,9 @@ export default function App() {
     [scenarios]
   );
 
-  // The left nav's sections (#500). Derived from FAMILIES + familyOf — never a
-  // second hand-maintained list — and a family this backend's /api/meta does not
-  // list is simply absent, so a single-family backend still renders correctly.
+  // The left nav's sections. Derived from FAMILIES + familyOf — never a second
+  // hand-maintained list — and a family this backend's /api/meta does not list
+  // is simply absent, so a single-family backend still renders correctly.
   const families = useMemo(
     () =>
       FAMILIES.map((f) => ({
@@ -176,9 +176,8 @@ export default function App() {
     />
   );
 
-  // Shell shape follows `allus/src/Layout.jsx:174-197`: a fixed 16rem sidebar from
-  // `lg` up, a slide-over drawer below it, and the content column offset by
-  // `lg:pl-64`.
+  // Fixed 16rem sidebar from `lg` up, a slide-over drawer below it, and the
+  // content column offset by `lg:pl-64`.
   return (
     <div className="min-h-screen bg-surface-alt text-body">
       <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 bg-surface border-r border-line flex-col">

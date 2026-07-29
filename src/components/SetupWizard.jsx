@@ -138,7 +138,7 @@ export default function SetupWizard({
         </ol>
       </div>
 
-      {/* #557: the portal half of setup, one row per control of every form the checklist
+      {/* The portal half of setup, one row per control of every form the checklist
           above sends the reader to — rendered from the FORM's control list, so an
           unexplained control shows up instead of being silently absent. */}
       <PortalSetup scenario={scenario} />

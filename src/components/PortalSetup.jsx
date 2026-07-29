@@ -3,14 +3,14 @@ import * as ui from '../ui.js';
 import { PORTAL_FORMS, portalSetupDeclaration, portalSetupGaps } from '../data/scenarios.js';
 
 /**
- * #557 — the portal half of setup, one row per control.
+ * The portal half of setup, one row per control.
  *
  * The scenario's own inputs are complete by construction: `SetupWizard` generates them from
  * `fields`, so an input cannot exist without its hint. This renders the same guarantee for
  * the portal forms a scenario sends you to — and it renders it the same WAY, by iterating
  * the FORM's control list rather than the scenario's answers. A control the scenario forgot
- * therefore appears here, loudly, instead of being silently absent (which is exactly how
- * scenario 1 shipped naming two of seven controls).
+ * therefore appears here, loudly, instead of being silently absent — naming only some of a
+ * form's controls is a real way for this data to drift out of date.
  *
  * `npm run check` reports the same gaps at build time; this is the copy a reader sees.
  */
@@ -32,10 +32,10 @@ function GapRow({ label }) {
 export default function PortalSetup({ scenario }) {
   const declaration = portalSetupDeclaration(scenario);
 
-  // ⚠ An OMITTED declaration must not render as an empty, innocent-looking panel — that is
-  // precisely the silence #557 exists to remove, and returning null here made the UI
-  // indistinguishable from a scenario that legitimately needs no portal work (review pass 1).
-  // The two cases are now different components on screen, as they are in the checker.
+  // ⚠ An OMITTED declaration must not render as an empty, innocent-looking panel — silence
+  // here must never look the same as a scenario that legitimately needs no portal work, since
+  // returning null for both would make the two indistinguishable in the UI. The two cases are
+  // deliberately different components on screen, as they are in the checker.
   if (declaration.mode === 'undeclared') {
     return (
       <div className={ui.errorBox}>

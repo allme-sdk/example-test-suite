@@ -32,7 +32,7 @@ function RawToggle({ value }) {
   );
 }
 
-// Flow family (#484): the result is {status, steps[], answers?, document?} and
+// Flow family: the result is {status, steps[], answers?, document?} and
 // accumulates across polls. Rendered distinctly from the generic key→value area:
 // a live step log (each type-checked submit, incl. the deliberate reject→accept),
 // a waiting-on-phone banner, then the decrypted answers + document status.

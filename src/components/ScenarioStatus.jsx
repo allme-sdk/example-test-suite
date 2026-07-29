@@ -3,10 +3,10 @@ import * as ui from '../ui.js';
 import { scenarioStatus } from '../data/scenarios.js';
 
 /**
- * #500 — the scenario's Ready / Needs setup / Guide signal, in ONE place.
+ * The scenario's Ready / Needs setup / Guide signal, in ONE place.
  *
- * It is shown twice now: as the badge on the scenario card, and as the icon beside
- * the scenario in the left nav. Two copies of the mapping would be exactly the drift
+ * It is shown twice: as the badge on the scenario card, and as the icon beside the
+ * scenario in the left nav. Two copies of the mapping would be exactly the drift
  * bug standards §1 exists to prevent, so the icon/label/badge-class tables live here
  * and both surfaces read them.
  */

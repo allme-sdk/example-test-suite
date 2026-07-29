@@ -2,10 +2,10 @@ import { ChevronRight } from 'lucide-react';
 import * as ui from '../ui.js';
 import { StatusBadge } from './ScenarioStatus.jsx';
 
-// The cards of ONE family. Family grouping moved to the left nav in #500 — the
-// sidebar selects the family and the content pane shows just that family's
-// scenarios, so the per-family section headings this component used to render
-// (#494) would now duplicate the page heading `App` already draws from FAMILIES.
+// The cards of ONE family. The sidebar selects the family and the content pane
+// shows just that family's scenarios, so this component renders no per-family
+// section heading of its own — that would duplicate the page heading `App`
+// already draws from FAMILIES.
 export default function ScenarioGrid({ scenarios, valuesById, onSelect }) {
   if (!scenarios.length) {
     return <div className={ui.noteBox}>The backend’s /api/meta listed no scenarios.</div>;

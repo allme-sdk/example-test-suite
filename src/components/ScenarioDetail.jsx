@@ -60,8 +60,8 @@ export default function ScenarioDetail({
 
   return (
     <div className="space-y-3">
-      {/* Back lands on the family the left nav currently has open (#500), so the
-          label names that family rather than the removed all-families page. */}
+      {/* Back lands on the family the left nav currently has open, so the label
+          names that family rather than the removed all-families page. */}
       <button type="button" className={ui.btnGhost} onClick={onBack}>
         <ArrowLeft className="w-4 h-4" />
         {backLabel}

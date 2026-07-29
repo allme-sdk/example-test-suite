@@ -3,26 +3,25 @@ import * as ui from '../ui.js';
 import { StatusIcon } from './ScenarioStatus.jsx';
 
 /**
- * #500 — the persistent left nav, in the allus portal's shape.
+ * The persistent left nav.
  *
- * Structure follows `allus/src/Layout.jsx:84-133` rather than re-inventing one: a
- * declarative nav list, a collapsible group whose sub-items are indented under the
- * parent (`:112-132`), the portal's active-state classes, and a bordered footer.
+ * A declarative nav list, a collapsible group whose sub-items are indented under
+ * the parent, active-state classes, and a bordered footer.
  *
- * Two deliberate differences, both decided on the issue:
- *  - There is NO react-router (owner decision, #500): `CONTRACT.md`'s `/callback`
- *    302 → `/?scenario={id}&run={runId}` is a contract all six backends implement,
- *    so selection stays component state and sections are knowingly not linkable.
- *    The portal's `NavLink` becomes a `<button>` with the same classes.
+ * Two deliberate design choices:
+ *  - There is NO react-router: `CONTRACT.md`'s `/callback` 302 →
+ *    `/?scenario={id}&run={runId}` is a contract all six backends implement, so
+ *    selection stays component state and sections are knowingly not linkable. A
+ *    `<button>` stands in for what would otherwise be a `NavLink`.
  *  - The groups are an ACCORDION: the active family is expanded, the others are
- *    collapsed. The portal needs an effect to re-open a group it navigated into
- *    (`Layout.jsx:60-69`, the #486 fix) precisely because a manually-collapsed group
- *    could hide the active sub-item; deriving "expanded" from "active" makes that
- *    state unreachable for a three-entry nav.
+ *    collapsed. Deriving "expanded" directly from "active" — rather than tracking
+ *    open/closed as separate state — means a manually-collapsed group can never
+ *    hide the active sub-item, because there is no separate state left to fall
+ *    out of sync with which family is active.
  *
  * The families and their titles/blurbs come from `FAMILIES`/`familyOf` in
  * `data/scenarios.js` — a second nav array would be the duplicate list standards §1
- * forbids and the issue explicitly rules out.
+ * forbids.
  */
 const FAMILY_ICON = {
   identity: KeyRound,
@@ -108,9 +107,8 @@ export default function Sidebar({
         )}
       </nav>
 
-      {/* The portal keeps its identity + account actions in a bordered footer
-          (`Layout.jsx:134-170`); the suite's equivalents are the SDK/contract badges
-          and the global Clear all, moved here out of the old centred header. */}
+      {/* Bordered footer: the SDK/contract badges and the global Clear all, moved
+          here out of the old centred header. */}
       <div className="px-3 py-3 border-t border-line space-y-3">
         {meta && (
           <div className="flex flex-wrap items-center gap-2 px-1">

@@ -1,11 +1,10 @@
 /**
- * #496 — dark mode, the portal's way.
+ * Dark mode.
  *
- * `tailwind.config.js` is the portal's, so dark mode is CLASS-based: the `.dark` class on the root
- * element is what flips every `dark:` utility. The portal toggles it from a theme picker backed by
- * localStorage; the example suite has never had a picker and this issue is a restyle, not a new
- * feature, so it keeps its previous behaviour exactly — follow the operating system — and simply
- * expresses it through the class the portal's config expects.
+ * `tailwind.config.js` configures dark mode as CLASS-based: the `.dark` class on the
+ * root element is what flips every `dark:` utility. The example suite has no theme
+ * picker of its own, so it follows the operating system's preference and expresses
+ * that through the `.dark` class the Tailwind config expects.
  */
 export function startThemeSync() {
   const mq = window.matchMedia('(prefers-color-scheme: dark)');
