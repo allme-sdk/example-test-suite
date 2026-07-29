@@ -48,9 +48,11 @@ examples don't run side by side. Since #494 that is no longer a limitation
 `{sdk, sdkVersion, contractVersion, scenarios: [{id, kind}]}` with
 `kind: "runnable" | "guide"`. The frontend renders only listed scenarios.
 **Scenario 7 is the one `guide` card**: it has NO `/start` (calling it is
-undefined); its card renders the setup checklist plus links that navigate to
-scenarios 1 and 5, where the 2FA prompt is observed. All other scenarios are
-`runnable`.
+undefined); its card renders its own scenario-specific checklist plus links
+that navigate to scenarios 1 and 5, where the 2FA prompt is observed. Every
+other scenario states its setup once, from the derived "what to set in the
+allus portal" section (`portalSetup`) — no separate hand-written checklist.
+All other scenarios are `runnable`.
 
 ### `POST /api/scenarios/{id}/config`
 

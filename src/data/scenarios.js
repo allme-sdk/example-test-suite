@@ -45,9 +45,9 @@ const PHONE_PREREQ =
 
 // ── The portal half of setup, per control ──────────────────────────────────────
 // A scenario's own inputs are complete BY CONSTRUCTION: `fields` below IS the form the
-// suite renders, so an input cannot exist without its `hint`. The portal half had no such
-// tie — `checklist` is free prose about forms in another product, so it can drift and
-// under-specify with nothing to catch it: a scenario could name only some of a form's
+// suite renders, so an input cannot exist without its `hint`. The portal half needs the
+// same tie: a free-prose description of a form in another product can drift and
+// under-specify with nothing to catch it — a scenario could name only some of a form's
 // controls, or omit the one control that decides whether an OIDC scenario shows any
 // claims at all.
 //
@@ -234,13 +234,6 @@ const CD_SERVICE_FIELDS = [
   { key: 'keyPassphrase', label: 'Service key passphrase', type: 'passphrase' }
 ];
 
-const CD_PORTAL_STEPS = [
-  'In the allus portal, create the SERVICE your company operates and download its private key (PEM).',
-  'Register a data client on that service (client_credentials) — its whitelist auto-grants /api/company-data/*, /api/keys/* and /api/contact-fields*.',
-  'On the service, configure the request fields (the slugs you ask connected people for).',
-  'Connect a test person to the service (the allme app → connect, or “Connect a person” on the service’s Overview tab), so there is data to read.'
-];
-
 // The four portal forms every company-data scenario sends you to. Shared, because the
 // scenarios share the setup — one description, five scenarios (standards §1).
 const SERVICE_CREATE_SETTINGS = {
@@ -288,7 +281,6 @@ const COMPANYDATA_SCENARIOS = [
     summary: 'Client::connections() reads each connected person’s decrypted values, grouped one card per person (two people who filled the same slug stay distinguishable).',
     readmeChapter: 'Company data — read connections',
     runButton: 'Read connections',
-    checklist: CD_PORTAL_STEPS,
     portalSetup: CD_PORTAL_SETUP,
     prerequisites: [],
     fields: [...CD_SERVICE_FIELDS, ...CD_ADVANCED]
@@ -300,10 +292,6 @@ const COMPANYDATA_SCENARIOS = [
     summary: 'Client::requestFields() returns your request slugs with label / type / the folded mandatory flag + one_time.',
     readmeChapter: 'Company data — request fields',
     runButton: 'List request fields',
-    checklist: [
-      ...CD_PORTAL_STEPS,
-      'The one_time flag this scenario prints is always false for rows made in the portal: the Requests tab has no one-time control, so every row it creates is a live/connected slot. one_time exists in the API and the SDK model; the portal simply does not offer it today.'
-    ],
     portalSetup: CD_PORTAL_SETUP,
     prerequisites: [],
     fields: [...CD_SERVICE_FIELDS, ...CD_ADVANCED]
@@ -315,10 +303,6 @@ const COMPANYDATA_SCENARIOS = [
     summary: 'Client::processChanges() drains the change feed through the crash-safe pump (idempotent per event on Change.id) and shows the drained batch.',
     readmeChapter: 'Company data — change feed',
     runButton: 'Drain the change feed',
-    checklist: [
-      ...CD_PORTAL_STEPS,
-      'Optionally edit one of the connected person’s shared values in the allme app just before running, so a field_updated event is in the feed to drain.'
-    ],
     portalSetup: CD_PORTAL_SETUP,
     prerequisites: [],
     fields: [...CD_SERVICE_FIELDS, ...CD_ADVANCED]
@@ -330,11 +314,6 @@ const COMPANYDATA_SCENARIOS = [
     summary: 'A public POST /webhook runs verifyWebhook() then parseWebhook() (401 on a bad HMAC, 200 otherwise); the same run also polls the change feed as an always-works fallback.',
     readmeChapter: 'Company data — webhooks',
     runButton: 'Start receiving',
-    checklist: [
-      ...CD_PORTAL_STEPS,
-      'Deployed platform: the cluster cannot reach your localhost, so open a tunnel first — cloudflared tunnel --url http://localhost:8091 — and use the printed public URL below. Local stack: no tunnel, the local delivery worker reaches http://localhost:8091/webhook directly.',
-      'Register the webhook on the service (the per-control table below), then copy the webhook id and the one-time HMAC secret shown at registration into the inputs. The run REFUSES to start without them (409 not_configured) — the tunnel is optional, the registration is not.'
-    ],
     portalSetup: [
       ...CD_PORTAL_SETUP,
       {
@@ -349,10 +328,12 @@ const COMPANYDATA_SCENARIOS = [
         }
       }
     ],
-    prerequisites: [],
+    prerequisites: [
+      'Deployed platform: the cluster cannot reach your localhost, so open a tunnel first — cloudflared tunnel --url http://localhost:8091 — and use the printed public URL below as the webhook endpoint. Local stack: no tunnel, the local delivery worker reaches http://localhost:8091/webhook directly.'
+    ],
     fields: [
       ...CD_SERVICE_FIELDS,
-      { key: 'webhookId', label: 'Webhook id (routing key)', type: 'text', hint: 'The X-Allus-Webhook-Id the platform sends; selects the HMAC secret and keys the single active webhook run.' },
+      { key: 'webhookId', label: 'Webhook id (routing key)', type: 'text', hint: 'The X-Allus-Webhook-Id the platform sends; selects the HMAC secret and keys the single active webhook run. Copied from the service’s webhook registration — the run refuses to start without it (409 not_configured).' },
       { key: 'webhookSecret', label: 'Webhook HMAC secret', type: 'secret', hint: 'The one-time secret shown at registration — written into the SDK config’s webhooks map; verifyWebhook() checks the signature against it.' },
       ...CD_ADVANCED
     ]
@@ -364,10 +345,6 @@ const COMPANYDATA_SCENARIOS = [
     summary: 'Client::createDocument() creates all six document/contract types — broadcast JSON/PDF, per-person file, private file, and contracts requiring signature / acceptance.',
     readmeChapter: 'Company data — documents',
     runButton: 'Create documents',
-    checklist: [
-      ...CD_PORTAL_STEPS,
-      'Copy the connected person’s share code into “Target person share code” below — the per-person, private and contract documents are encrypted to that recipient.'
-    ],
     portalSetup: CD_PORTAL_SETUP,
     prerequisites: [],
     fields: [
@@ -386,10 +363,6 @@ export const SCENARIOS = [
     summary: 'Classic OAuth redirect sign-in through the PHP SDK: authorizeUrl → /callback → completeSignIn.',
     readmeChapter: 'Sign in (redirect)',
     runButton: 'Sign in (redirect)',
-    checklist: [
-      'In the allus portal → Settings → OAuth apps, register an OAuth app with the settings in the table below.',
-      'Copy the app’s client id and client secret — both shown once, immediately after you press Register app — into the inputs below.'
-    ],
     portalSetup: [{ form: 'oauth-app', settings: SIGNIN_APP_SETTINGS }],
     prerequisites: [],
     fields: [
@@ -405,10 +378,6 @@ export const SCENARIOS = [
     summary: 'Detached sign-in: the desktop shows a link + QR; the backend completes via pollResult then completeSignIn.',
     readmeChapter: 'Sign in (detached)',
     runButton: 'Start detached sign-in',
-    checklist: [
-      'In the allus portal → Settings → OAuth apps, register an OAuth app with the settings in the table below — or simply reuse scenario 1’s app, which needs exactly the same ones.',
-      'Copy the app’s client id and client secret (both shown once, right after you press Register app) into the inputs below.'
-    ],
     portalSetup: [{ form: 'oauth-app', settings: SIGNIN_APP_SETTINGS }],
     prerequisites: [PHONE_PREREQ],
     fields: [
@@ -424,12 +393,6 @@ export const SCENARIOS = [
     summary: 'Mode one_time returns a small claim set; showing DECRYPTED values needs the OAuth app’s private key.',
     readmeChapter: 'One-time claims',
     runButton: 'Request one-time claims',
-    checklist: [
-      'In the allus portal → Settings → OAuth apps, register an OAuth app with the settings in the table below. There is NO “enable one-time claims” control anywhere on that form — one_time is a mode the SDK sends per request, not an app setting.',
-      'SAVE THE PASSPHRASE the portal shows once when the app is created: it is what decrypts the app private key, and it is not recoverable. The client secret is shown once in the same panel.',
-      'Download the app’s private key with the download button on the app’s row (it appears after registration; there is no such control on the form) — it decrypts the one-time claim values.',
-      'Copy the client id/secret below, pick the downloaded PEM file, and enter that passphrase.'
-    ],
     portalSetup: [
       {
         form: 'oauth-app',
@@ -452,9 +415,14 @@ export const SCENARIOS = [
         key: 'oauthPrivateKeyPem',
         label: 'OAuth app private key (PEM)',
         type: 'pem',
-        hint: 'The file content is read into localStorage; on Save the backend writes it under .runtime/config/keys (0600) and records its path in the SDK config file. Clear removes it.'
+        hint: 'Downloaded with the download button on the app’s row in the OAuth apps list (it appears after registration; the registration form itself has no such control). The file content is read into localStorage; on Save the backend writes it under .runtime/config/keys (0600) and records its path in the SDK config file. Clear removes it.'
       },
-      { key: 'oauthKeyPassphrase', label: 'Private key passphrase', type: 'passphrase' },
+      {
+        key: 'oauthKeyPassphrase',
+        label: 'Private key passphrase',
+        type: 'passphrase',
+        hint: 'Shown ONCE, in the same panel as the client secret, when the app is created — it decrypts the private key above and is not recoverable, so save it then.'
+      },
       ...ADVANCED
     ]
   },
@@ -465,11 +433,6 @@ export const SCENARIOS = [
     summary: 'Mode connect keeps a live, auto-updating record; live values are encrypted per-service and read via the service data client.',
     readmeChapter: 'Connect (stay-connected)',
     runButton: 'Connect and read live values',
-    checklist: [
-      'Three portal objects, in this order: the SERVICE you connect to, an OAuth app that references it (the consent the person approves), and a data client ON that service (which reads the live values afterwards). All three per-control tables are below.',
-      'The OAuth app and the data client must name the SAME service. They cannot be one object: a data client’s redirect URI is https-only, so it can never be the consent app.',
-      'Copy BOTH the OAuth app id/secret and the data client id/secret below, pick the SERVICE private key PEM, and enter the passphrase shown once when the service was created.'
-    ],
     portalSetup: [
       { form: 'service-create', settings: SERVICE_CREATE_SETTINGS },
       { form: 'service-overview', settings: SERVICE_OVERVIEW_SETTINGS },
@@ -510,11 +473,6 @@ export const SCENARIOS = [
     summary: 'Standard OIDC: discovery → PKCE → id_token verified by the pinned third-party OIDC library (the #314 compliance demo).',
     readmeChapter: 'OIDC login',
     runButton: 'Sign in with OIDC',
-    checklist: [
-      'In the allus portal → Settings → OAuth apps, register an OAuth app with the settings in the table below — an OAuth app IS the OIDC relying-party registration; there is no separate “OIDC client”.',
-      'Read the “Claims in the id_token” row before you save. It has to be Plaintext, and it is the difference between this scenario showing an email and a name or showing neither.',
-      'Copy the OAuth app’s client id and client secret into the inputs below. (The example uses client_secret_post token auth — fixed provider behaviour, not a portal control.)'
-    ],
     portalSetup: [{ form: 'oauth-app', settings: OIDC_APP_SETTINGS }],
     prerequisites: [],
     fields: [
@@ -530,11 +488,6 @@ export const SCENARIOS = [
     summary: 'The desktop consent page polls the flow status and completes by itself once the person approves in the app (#431).',
     readmeChapter: 'OIDC — continue on your phone',
     runButton: 'Start OIDC (continue on phone)',
-    checklist: [
-      'In the allus portal → Settings → OAuth apps, register an OAuth app with the settings in the table below — or reuse scenario 5’s, which needs exactly the same ones. An OAuth app IS the OIDC relying-party registration; there is no separate “OIDC client”.',
-      '“Claims in the id_token” must be Plaintext here for the same reason as in scenario 5 — see the row below.',
-      'Copy the OAuth app’s client id and client secret into the inputs below. (The example uses client_secret_post token auth — fixed provider behaviour, not a portal control.)'
-    ],
     portalSetup: [{ form: 'oauth-app', settings: OIDC_APP_SETTINGS }],
     prerequisites: [PHONE_PREREQ],
     fields: [
@@ -584,12 +537,6 @@ export const SCENARIOS = [
     runButton: 'Run challenge',
     enrollButton: 'Enroll device (redirect)',
     enrollButtonDetached: 'Enroll — continue on phone',
-    checklist: [
-      'You need ONE service and, on it, two registrations that must name the SAME service: an OAuth app (which the person enrolls through) and a data client (which raises the challenges). All the per-control tables are below.',
-      'The data client’s endpoint whitelist — /api/service-2fa/* included — is granted automatically at registration, so there is nothing to pick or tick. Use a client registered on 2026-07-23 or later: an older one predates that grant, and until the platform has backfilled it every challenge call returns 403 “Client not authorized for this endpoint”. Registering a fresh data client always gives you the current whitelist.',
-      'NUMBER MATCHING IS NOT A PORTAL CONTROL — there is no toggle for it on any portal page. It is a per-service setting you change over the API: PUT /api/services/{serviceId}/number-matching with body {"number_matching": true} (or false). Authenticate as an ACCOUNT API client holding the “Service management” capability (allus portal → Settings → API clients; the last table below is that form) with a client_credentials token from /oauth2/token. Run the scenario once with it on and once with it off; with it on, the challenge comes back with matching_digits, which the fake login page displays and the person types back into the allme app.',
-      'Enter the OAuth-app (with-service) creds, the data-client creds, the person’s share code and a demo user name below. Enroll first — “Enroll device (redirect)” completes via the callback, “Enroll — continue on phone” is the detached leg (link + QR, completes by pollResult) — then run a challenge.'
-    ],
     portalSetup: [
       { form: 'service-create', settings: SERVICE_CREATE_SETTINGS },
       { form: 'service-overview', settings: SERVICE_OVERVIEW_SETTINGS },
@@ -650,13 +597,6 @@ export const SCENARIOS = [
       'Trigger a contract flow and drive the company party through it: type-checked step filling (one deliberate reject → accept), a person turn on the phone, then the decrypted answers and — for the contract fixture — the signed document.',
     readmeChapter: 'Run a contract flow',
     runButton: 'Trigger the flow run',
-    checklist: [
-      'Create (or reuse) the SERVICE, register a data client on it, and import + publish one of the two flow packages from this example’s fixtures/ directory. The per-control tables are below.',
-      'THE PUBLISHED FLOW ID is the last segment of the flow builder’s address after you publish — .../services/<serviceId>/flows/<flowId>. Copy it from the address bar; there is no “copy id” button.',
-      'THE CONNECTION ID DOES NOT COME FROM THE PORTAL — the portal shows no per-service list of connected people. Run the “Read connected people” scenario first and open its Raw view: each entry’s connectionId is the value this scenario wants. The demo person must already be connected to this service.',
-      'Copy the flow id and the connection id below, pick the SERVICE private key PEM and its passphrase, and enter the data-client id/secret.',
-      'Pick the same fixture below that you imported — the backend uses it to know the validation-demo step and whether to download a document.'
-    ],
     portalSetup: [
       { form: 'service-create', settings: SERVICE_CREATE_SETTINGS },
       { form: 'service-overview', settings: SERVICE_OVERVIEW_SETTINGS },
@@ -683,8 +623,8 @@ export const SCENARIOS = [
         hint: 'The flow answers + document copy are service-key-encrypted; this key decrypts them. Read into localStorage; on Save written under .runtime/config/keys (0600) and referenced by path in the SDK config file.'
       },
       { key: 'keyPassphrase', label: 'Service key passphrase', type: 'passphrase' },
-      { key: 'flowId', label: 'Published flow id', type: 'text', hint: 'The id of the flow you imported AND published in the portal.' },
-      { key: 'connectionId', label: 'Connection id', type: 'text', hint: 'The connection to the demo person — the flow’s customer party binds to this connection’s person.' },
+      { key: 'flowId', label: 'Published flow id', type: 'text', hint: 'The id of the flow you imported AND published in the portal — the last segment of the flow builder’s address after you publish (…/services/<serviceId>/flows/<flowId>). Copy it from the address bar; there is no “copy id” button.' },
+      { key: 'connectionId', label: 'Connection id', type: 'text', hint: 'The connection to the demo person — the flow’s customer party binds to this connection’s person. The portal shows no per-service list of connected people, so this does NOT come from the portal: run the “Read connected people” scenario first and open its Raw view — each entry’s connectionId is the value this scenario wants.' },
       {
         key: 'fixture',
         label: 'Fixture',

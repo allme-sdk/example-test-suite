@@ -129,18 +129,10 @@ export default function SetupWizard({
 
   return (
     <div className={`${ui.block} space-y-4`}>
-      <div>
-        <h4 className={ui.h4}>Setup checklist</h4>
-        <ol className="mt-2 space-y-1.5 list-decimal list-inside text-sm text-body marker:text-faint">
-          {scenario.checklist.map((line, i) => (
-            <li key={i}>{line}</li>
-          ))}
-        </ol>
-      </div>
-
-      {/* The portal half of setup, one row per control of every form the checklist
-          above sends the reader to — rendered from the FORM's control list, so an
-          unexplained control shows up instead of being silently absent. */}
+      {/* The single source for a scenario's setup — one row per control of every
+          portal form it sends the reader to — rendered from the FORM's control
+          list, so an unexplained control shows up instead of being silently
+          absent. */}
       <PortalSetup scenario={scenario} />
 
       {scenario.prerequisites && scenario.prerequisites.length > 0 && (

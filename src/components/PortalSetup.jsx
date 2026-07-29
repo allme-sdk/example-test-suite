@@ -42,7 +42,8 @@ export default function PortalSetup({ scenario }) {
         <AlertTriangle className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
         <strong>This scenario declares no portal setup.</strong> That is a gap in the example
         suite, not a sign that there is nothing to do: if it genuinely needs no portal work it
-        must say so explicitly. Please report it, and follow the checklist above with care.
+        must say so explicitly. Please report it, and read the scenario's own inputs and
+        prerequisites with care.
       </div>
     );
   }
