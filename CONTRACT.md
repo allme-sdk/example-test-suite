@@ -30,8 +30,9 @@ families — the earlier per-family versions/pins (v1/v2/v3 with three separate
 
 The frontend keys its scenario definitions on these ids and renders whatever the
 connected backend's `/api/meta` lists. `GET /api/meta`,
-`POST /api/scenarios/{id}/config|start|clear`, `GET /api/runs/{runId}` and
-`POST /api/clear` are shared by every family; `GET /callback` and
+`POST /api/scenarios/{id}/config|start|clear`, `GET /api/runs/{runId}`,
+`POST /api/clear` and `POST`/`GET /api/state` are shared by every family;
+`GET /callback` and
 `POST /api/scenarios/{id}/enroll` are **identity-family only** (the OAuth leg).
 
 One port serves bundle + API — default `8091`, overridable via the `PORT` env
@@ -168,6 +169,47 @@ at it). Global clear wipes all run files and the entire `.runtime/config/` tree
 (configs, metas, keys). Single-worker server (below) → no concurrent mutation to
 guard; a plain unlink suffices.
 
+### `POST /api/state` · `GET /api/state`
+
+The developer convenience that moves a whole setup between devices: **Save all**
+`POST`s the browser's entire suite setup, **Restore all** `GET`s it back on another
+device browsing the same backend. Both are shared by every family — the blob is the
+browser's, not any scenario's.
+
+`POST` stores the request body **verbatim**, under `.runtime/state.json`, and returns
+`{ok: true}`; idempotent (a re-save overwrites). `GET` returns those same bytes with
+`Content-Type: application/json`, or `404 {"error":"not_found"}` when **no snapshot file
+exists** — a token-only refusal, like `/api/runs/{runId}`'s, because the client maps the
+status without reading the body. A file that exists but cannot be read is a fault and
+answers with the failure envelope, never as "nothing saved".
+
+**The blob is COLD STORAGE and the backend must never read it.** It does not parse it,
+validate its shape, migrate it, or use any part of it to run a scenario — it stores
+bytes and hands them back. The frontend therefore owns the format alone
+(`src/lib/storage.js`), and can change it without touching a single backend. A backend
+that starts depending on the contents is a defect, not an extension.
+
+Two consequences that are part of the contract, not implementation detail:
+
+- **The payload stays BYTES for the whole path** — request body → file → response. A
+  decode to the language's string type and back is a re-encode of content the backend may
+  not interpret.
+- **Presence of the file is the ONLY test.** An empty or whitespace body is a snapshot
+  like any other; classifying it as "nothing saved" is the same inspection wearing a
+  smaller hat, and makes a successful `POST` answer `404` on the next `GET`.
+
+**No `contractVersion` bump: this is additive and OPTIONAL.** Every other contract
+change so far added a family the bundle needed; this adds two endpoints the bundle can
+do without. Bumping would refuse to start every example whose `frontend.lock` still
+pins the previous bundle — the whole suite dark until the pins are re-cut — to buy a
+guarantee worth less than that: against a backend that predates these routes, the
+`404` simply reports "nothing saved yet" and only the two buttons are inert.
+
+Restore writes **localStorage only**. Each scenario's config file is still written by
+its own **Save**, which is what derives `oauth_redirect_uri` from the origin the device
+is actually browsing on — so a restored setup is finished by pressing Save per
+scenario, not by the restore itself.
+
 ## The failure envelope — `error` carries the REASON (#583)
 
 Any non-2xx a backend answers with, other than the two token-only refusals below,
@@ -253,6 +295,13 @@ Cross-request state lives in `.runtime/` (git-ignored, wiped at startup):
   write-temp + atomic rename (crash hygiene only — a reader never sees a partial
   file). Removed by its **30-minute TTL** (lazy: any request sweeps expired files,
   also collecting orphaned `*.tmp`), by Clear, or by the startup wipe.
+- `state.json` — the browser's whole-suite setup snapshot (`POST`/`GET /api/state`),
+  held verbatim. Like a config file it carries **no TTL** — it is setup, not a run — so
+  it goes only on Clear all or the startup wipe. **Clear all takes it too**, because it
+  holds the same credentials the config tree does: a developer who clears everything
+  must not be left with a copy of them on disk. Living only as long as the server does
+  is what the transfer needs — it carries a setup to the second device, and the device
+  that saved it still holds that setup in its own localStorage.
 
 The short-cycled 2s SDK wait bounds how long a single worker is busy per poll
 (~2s), so serialized requests stay responsive; the earlier worry about a 600s

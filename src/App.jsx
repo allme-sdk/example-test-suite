@@ -1,12 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Loader2, Menu } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, Menu } from 'lucide-react';
 import * as ui from './ui.js';
 import Sidebar from './components/Sidebar.jsx';
 import ScenarioGrid from './components/ScenarioGrid.jsx';
 import ScenarioDetail from './components/ScenarioDetail.jsx';
 import { SCENARIOS_BY_ID, FAMILIES, familyOf } from './data/scenarios.js';
-import { getMeta, clearScenarioBackend, clearAllBackend } from './lib/api.js';
-import { loadValues, saveValues, clearValues, clearAllValues } from './lib/storage.js';
+import {
+  getMeta,
+  clearScenarioBackend,
+  clearAllBackend,
+  saveSuiteState,
+  loadSuiteState
+} from './lib/api.js';
+import {
+  loadValues,
+  saveValues,
+  clearValues,
+  clearAllValues,
+  exportAllValues,
+  importAllValues
+} from './lib/storage.js';
 
 // Resume target after the /callback 302 → /?scenario={id}&run={runId}.
 function readResume() {
@@ -21,6 +34,8 @@ function readResume() {
   return null;
 }
 
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 export default function App() {
   const [meta, setMeta] = useState(null);
   const [metaError, setMetaError] = useState(null);
@@ -29,7 +44,17 @@ export default function App() {
   const [activeFamily, setActiveFamily] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [resume] = useState(readResume);
-  const [clearError, setClearError] = useState(null);
+  // ONE banner for every whole-suite action (Clear all, Save all, Restore all): a
+  // second parallel notice state per action is the duplicate this file would then
+  // have to keep in sync. `{tone: 'error' | 'ok', text}`.
+  const [notice, setNotice] = useState(null);
+  // ONE mutual-exclusion flag for the three whole-suite actions. All three act on the
+  // same stored snapshot, so any two of them in flight together can interleave into an
+  // outcome neither reports: a clear whose request lands first and a save whose request
+  // lands second end with the snapshot recreated while the UI presents a completed
+  // clear. Only one may be in flight at a time, and every one of the three buttons is
+  // disabled for the duration.
+  const [suiteBusy, setSuiteBusy] = useState(false);
 
   // Scenarios to render: only those present in /api/meta AND known to the
   // design data; each carries meta's authoritative `kind`. Rendered in the
@@ -131,33 +156,111 @@ export default function App() {
     try {
       await clearScenarioBackend(id);
     } catch (e) {
-      setClearError(
-        `Clear failed — the backend still holds scenario ${id}'s config file and private key. Nothing was cleared; retry. (${e.message})`
-      );
+      setNotice({
+        tone: 'error',
+        text: `Clear failed — the backend still holds scenario ${id}'s config file and private key. Nothing was cleared; retry. (${e.message})`
+      });
       return;
     }
     clearValues(id);
     setValuesById((prev) => ({ ...prev, [id]: {} }));
-    setClearError(null);
+    setNotice(null);
   }
 
   async function clearEverything() {
     setMobileOpen(false);
+    setSuiteBusy(true);
     try {
       await clearAllBackend();
+      clearAllValues();
+      setValuesById((prev) => {
+        const reset = {};
+        Object.keys(prev).forEach((k) => (reset[k] = {}));
+        return reset;
+      });
+      setNotice(null);
     } catch (e) {
-      setClearError(
-        `Clear all failed — the backend still holds saved config files and private keys. Nothing was cleared; retry. (${e.message})`
-      );
-      return;
+      setNotice({
+        tone: 'error',
+        text: `Clear all failed — the backend still holds saved config files and private keys. Nothing was cleared; retry. (${e.message})`
+      });
+    } finally {
+      setSuiteBusy(false);
     }
-    clearAllValues();
-    setValuesById((prev) => {
-      const reset = {};
-      Object.keys(prev).forEach((k) => (reset[k] = {}));
-      return reset;
-    });
-    setClearError(null);
+  }
+
+  // Save all — send this browser's whole setup to the example backend, so another
+  // device browsing the same backend can pick it up.
+  async function saveEverything() {
+    setMobileOpen(false);
+    setSuiteBusy(true);
+    try {
+      const snapshot = exportAllValues();
+      await saveSuiteState(snapshot);
+      const n = Object.keys(snapshot.values).length;
+      setNotice({
+        tone: 'ok',
+        text: `Saved this browser's setup for ${plural(n, 'scenario')} on the example backend. Open the backend's address on the other device and press Restore all there.`
+      });
+    } catch (e) {
+      setNotice({
+        tone: 'error',
+        text: `Save all failed — nothing was stored on the backend. (${e.message})`
+      });
+    } finally {
+      setSuiteBusy(false);
+    }
+  }
+
+  // Restore all — load the saved snapshot into THIS browser's stored setup. Nothing
+  // beyond that storage is written: pressing Save inside a scenario is still what sends
+  // that scenario's settings on, and that is what makes them this device's own.
+  async function restoreEverything() {
+    setMobileOpen(false);
+    setSuiteBusy(true);
+    try {
+      const snapshot = await loadSuiteState();
+      if (snapshot === null) {
+        setNotice({
+          tone: 'error',
+          text: 'Nothing to restore — no setup has been saved on this backend yet. Press Save all on the device that has the setup.'
+        });
+        return;
+      }
+      const restored = importAllValues(snapshot);
+      if (restored === null) {
+        setNotice({
+          tone: 'error',
+          text: 'The setup saved on this backend could not be read, so this browser was left untouched.'
+        });
+        return;
+      }
+      setValuesById((prev) => {
+        const next = {};
+        Object.keys(prev).forEach((id) => (next[id] = restored[id] || {}));
+        Object.keys(restored).forEach((id) => (next[id] = restored[id]));
+        return next;
+      });
+      setNotice({
+        tone: 'ok',
+        text: `Restored the setup for ${plural(Object.keys(restored).length, 'scenario')}. Open each scenario you want to run and press Save — that is what writes its config file here, with the redirect URI of the address you are browsing on.`
+      });
+    } catch (e) {
+      // `rolledBack === false` is the one case where the setup really did change: the
+      // snapshot could not be written AND the previous entries could not be put back.
+      // Reporting "left untouched" there would be a lie about the state of the machine
+      // the developer is holding, so that case says what actually happened. Any other
+      // failure (the fetch, an unreadable body) never reached storage at all.
+      const lost = e && e.rolledBack === false;
+      setNotice({
+        tone: 'error',
+        text: lost
+          ? `Restore all failed while writing, and the previous setup could not be put back — this browser's setup is now incomplete. Free some browser storage and press Restore all again. (${e.message})`
+          : `Restore all failed — this browser's setup was left untouched. (${e.message})`
+      });
+    } finally {
+      setSuiteBusy(false);
+    }
   }
 
   const selected = selectedId != null ? scenariosById[selectedId] : null;
@@ -173,6 +276,9 @@ export default function App() {
       onSelectScenario={selectScenario}
       meta={meta}
       onClearAll={clearEverything}
+      onSaveAll={saveEverything}
+      onRestoreAll={restoreEverything}
+      suiteBusy={suiteBusy}
     />
   );
 
@@ -214,10 +320,14 @@ export default function App() {
             </div>
           )}
 
-          {clearError && (
-            <div className={ui.errorBox}>
-              <AlertCircle className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
-              {clearError}
+          {notice && (
+            <div className={notice.tone === 'error' ? ui.errorBox : ui.noteBox}>
+              {notice.tone === 'error' ? (
+                <AlertCircle className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+              )}
+              {notice.text}
             </div>
           )}
 

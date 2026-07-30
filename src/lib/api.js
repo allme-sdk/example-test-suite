@@ -90,3 +90,29 @@ export async function clearAllBackend() {
   const { ok, body } = await request('/api/clear', jsonPost());
   if (!ok) throw new Error((body && body.error) || 'clear-all failed');
 }
+
+// POST /api/state -> {ok:true}
+// The whole-suite snapshot (storage.js `exportAllValues`). CONTRACT.md fixes this
+// payload as OPAQUE, so its shape is this repo's alone to change.
+export async function saveSuiteState(snapshot) {
+  const { ok, body } = await request('/api/state', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(snapshot)
+  });
+  if (!ok) throw new Error((body && body.error) || 'save-all failed');
+  return body;
+}
+
+// GET /api/state -> the snapshot last written by POST /api/state.
+// 404 -> null, surfaced so the caller can say "nothing to restore" rather than report
+// a failure.
+export async function loadSuiteState() {
+  const { ok, status, body } = await request('/api/state');
+  if (status === 404) return null;
+  if (!ok) throw new Error((body && body.error) || 'restore-all failed');
+  // A 200 with an empty body is a stored snapshot this side cannot read — which is a
+  // different answer from "nothing is stored" (404), and says so: `{}` carries no
+  // `values`, so the caller reports it as unreadable rather than as absent.
+  return body === null ? {} : body;
+}

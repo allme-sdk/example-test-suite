@@ -1,4 +1,12 @@
-import { ChevronDown, KeyRound, Boxes, FileText, Trash2 } from 'lucide-react';
+import {
+  ChevronDown,
+  KeyRound,
+  Boxes,
+  FileText,
+  Trash2,
+  UploadCloud,
+  DownloadCloud
+} from 'lucide-react';
 import * as ui from '../ui.js';
 import { StatusIcon } from './ScenarioStatus.jsx';
 
@@ -46,7 +54,10 @@ export default function Sidebar({
   onSelectFamily,
   onSelectScenario,
   meta,
-  onClearAll
+  onClearAll,
+  onSaveAll,
+  onRestoreAll,
+  suiteBusy
 }) {
   return (
     <div className="flex flex-col h-full">
@@ -119,15 +130,50 @@ export default function Sidebar({
             <span className={ui.badgeNeutral}>contract v{meta.contractVersion}</span>
           </div>
         )}
+        {/* Move a whole setup between devices: Save all sends this browser's setup out,
+            Restore all reads it back on the device that needs it. They sit directly
+            above Clear all because all three act on the WHOLE suite rather than on the
+            open scenario — which is also why one `suiteBusy` flag disables all three
+            together: any two of them running at once can interleave. */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            className={`${ui.btn} w-full justify-center`}
+            onClick={onSaveAll}
+            disabled={!meta || suiteBusy}
+          >
+            <UploadCloud className="w-4 h-4" />
+            Save all
+          </button>
+          <button
+            type="button"
+            className={`${ui.btn} w-full justify-center`}
+            onClick={onRestoreAll}
+            disabled={!meta || suiteBusy}
+          >
+            <DownloadCloud className="w-4 h-4" />
+            Restore all
+          </button>
+          <p className={`${ui.faint} px-1`}>
+            Save this browser&apos;s setup on the backend, then Restore it on a phone
+            browsing the same address.
+          </p>
+        </div>
         {/* Disabled until /api/meta resolves. The old header rendered this button only
             in the loaded state; the footer is always mounted, so without the guard a
             click during load — or while the backend is unreachable — fires a clear
-            that can only fail, stacking a second error box on the load error. */}
+            that can only fail, stacking a second error box on the load error. The
+            two buttons above are guarded for the same reason.
+
+            Also disabled while another whole-suite action is in flight, and it holds
+            the same flag while IT runs: overlapping the three lets a save land after a
+            clear, so the credentials the clear was meant to remove are written back
+            while the clear reports success. */}
         <button
           type="button"
           className={`${ui.btnDanger} w-full justify-center`}
           onClick={onClearAll}
-          disabled={!meta}
+          disabled={!meta || suiteBusy}
         >
           <Trash2 className="w-4 h-4" />
           Clear all

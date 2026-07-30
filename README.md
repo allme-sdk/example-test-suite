@@ -105,8 +105,26 @@ The page has the **allus portal's shell**: a persistent left sidebar
 ([`src/components/Sidebar.jsx`](./src/components/Sidebar.jsx)) beside the content
 pane, following `allus/src/Layout.jsx` — the same fixed `w-64` aside from `lg` up,
 the same slide-over drawer below it, the same collapsible nav group and active-item
-styling, and a bordered footer that carries the SDK / contract badges and the global
-**Clear all**.
+styling, and a bordered footer that carries the SDK / contract badges, the two
+whole-suite transfer buttons and the global **Clear all**.
+
+**Save all / Restore all.** A setup is typed into localStorage, so it is stuck on the
+browser that typed it — which is why testing the same scenarios from a phone used to
+mean entering everything again. **Save all** ships this browser's whole setup to the
+backend (`POST /api/state`) and **Restore all** loads it back on another device
+browsing the same backend (`GET /api/state`); both sit directly above Clear all,
+because all three act on the whole suite rather than the open scenario. The backend
+stores the blob **verbatim and never reads it** — bytes in, the same bytes out, with the
+file's presence as the only thing that distinguishes a saved snapshot from none — so
+[`src/lib/storage.js`](./src/lib/storage.js) owns the snapshot format on its own.
+
+Restore writes localStorage only: each scenario's config file is still written by its
+own **Save**, which is what derives the redirect URI from the origin that device is
+browsing on. It is **replace-or-unchanged** — the previous entries are captured before
+the clear and put back if a write fails, and if that rollback fails too the message says
+the setup is now incomplete instead of claiming it was left untouched. All three
+whole-suite buttons share one busy flag, so a Save cannot be started while a Clear is in
+flight (and land after it, writing the credentials back).
 
 The nav lists the **three scenario families** (`Identity`, `Company data`,
 `Contract flows`), each expanding to its own scenarios; picking a family shows that
