@@ -104,6 +104,15 @@ redirect-leg enrollment outcome, #436 — nothing to exchange; the outcome is
 recorded). Writes the outcome to the run stash, then 302 →
 `/?scenario={id}&run={runId}` so the frontend resumes the right card.
 
+For scenarios 1–4 (the `completeSignIn` leg), the run's `result` carries
+`{user, mode, two_factor, values, values_cipher, attestations}`. `values_cipher`
+is a sibling of `values`, keyed by the SAME claim name: the raw app-key
+ciphertext wrapper each decrypted value came from, read straight off
+`completeSignIn`'s own userinfo response before decryption — the pairing is
+what lets the panel show that the cleartext really came from that ciphertext
+rather than assert it. Empty for signin mode (scenarios 1/2), which asks for
+no claims; that emptiness is the honest answer, not a gap.
+
 ### `GET /api/runs/{runId}`
 
 `{status: "pending"|"done"|"failed", result?, error?, calls: [strings]}` — ONE

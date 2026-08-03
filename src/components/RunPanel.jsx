@@ -32,10 +32,13 @@ function RawToggle({ value }) {
   );
 }
 
-// Each decrypted flow answer is shown paired with the ciphertext it was decrypted
-// from — the same row, never two separate lists — so a reader can see the decrypt
-// actually ran on real bytes rather than take it on faith. A slug with no ciphertext
-// (nothing came back encrypted for it) says so plainly instead of hiding the row.
+// Each decrypted value (a flow answer or an identity claim) is shown paired with the
+// ciphertext it was decrypted from — the same row, never two separate lists — so a reader
+// can see the decrypt actually ran on real bytes rather than take it on faith. A slug with
+// no ciphertext (nothing came back encrypted for it) says so plainly instead of hiding the
+// row. `cipher` is whatever shape the caller's raw wire value takes — a pre-serialized
+// string (flow answers) or a parsed JSON wrapper object (identity claims) — so it goes
+// through fmtVal exactly like `value` rather than being rendered as a raw child.
 function AnswerRows({ answers }) {
   return (
     <div className="mt-2 space-y-2">
@@ -45,7 +48,7 @@ function AnswerRows({ answers }) {
           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm items-baseline">
             <span className={ui.faint}>Ciphertext</span>
             <span className={`${ui.code} break-all`}>
-              {a.cipher ? a.cipher : <span className={ui.faint}>(none returned for this slug)</span>}
+              {a.cipher ? fmtVal(a.cipher) : <span className={ui.faint}>(none returned for this slug)</span>}
             </span>
             <span className={ui.faint}>Decrypted</span>
             <span className={`${ui.code} break-words`}>{fmtVal(a.value)}</span>
@@ -201,9 +204,27 @@ function Docs({ docs }) {
   );
 }
 
+// identity family (scenarios 1-4): a completeSignIn result carries `values` (decrypted claims)
+// paired with `values_cipher` (the SAME claims' raw app-key ciphertext, keyed identically) — the
+// sibling always present (empty for signin mode, which asks for none) rather than only sometimes
+// there, so its presence alone identifies this result shape. Reuses AnswerRows (the flow family's
+// paired renderer) rather than a second copy: this is the same pairing, just adapted from a
+// claim-name-keyed map instead of a slug-keyed list.
+function SignInValues({ values, cipher }) {
+  const rows = Object.keys(values || {}).map((slug) => ({
+    slug,
+    value: values[slug],
+    cipher: cipher ? cipher[slug] : undefined
+  }));
+  if (rows.length === 0) {
+    return <div className={ui.sub}>No claim values (this mode asked for none).</div>;
+  }
+  return <AnswerRows answers={rows} />;
+}
+
 // Shape-aware body: the pinned company-data result schemas render richly; any other
-// object falls back to a generic key→value grid (the identity family). The Raw view
-// (JSON.stringify(result)) always shows everything, incl. each event's `raw` object.
+// object falls back to a generic key→value grid. The Raw view (JSON.stringify(result))
+// always shows everything, incl. each event's `raw` object.
 function DataBody({ result }) {
   if (Array.isArray(result.connections)) return <Connections connections={result.connections} />;
   if (Array.isArray(result.fields)) return <Fields fields={result.fields} />;
@@ -221,6 +242,19 @@ function DataBody({ result }) {
     );
   }
   if (Array.isArray(result.docs)) return <Docs docs={result.docs} />;
+  if (result.values_cipher !== undefined && typeof result.values === 'object' && result.values !== null) {
+    const { values, values_cipher: cipher, ...rest } = result;
+    return (
+      <div className="space-y-3">
+        <KeyVal rows={Object.entries(rest)} />
+        <div>
+          <h4 className={ui.h4}>Claim values</h4>
+          <p className={ui.faint}>Each decrypted value next to the app-key ciphertext it was decrypted from.</p>
+          <SignInValues values={values} cipher={cipher} />
+        </div>
+      </div>
+    );
+  }
   if (typeof result === 'object' && !Array.isArray(result)) {
     return <KeyVal rows={Object.entries(result)} />;
   }
