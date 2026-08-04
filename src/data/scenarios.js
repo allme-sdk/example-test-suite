@@ -201,8 +201,8 @@ const OIDC_APP_SETTINGS = {
   service: 'Leave it on “No service (sign-in / one-time only)”. A service is only needed for a per-claim live link, which plaintext delivery below rules out anyway.',
   confidential: CONFIDENTIAL_SETTING,
   require2fa: REQUIRE_2FA_OFF_SETTING,
-  claimsDelivery: 'Choose “Plaintext”. This is the one setting that decides whether this scenario shows anything: a standards-only OIDC relying party — which is exactly what this scenario demonstrates — reads its claims out of the id_token, and only plaintext delivery puts readable values there. Left on “Encrypted” the login still succeeds, but the id_token carries no email and no name — only the standard identity claims (sub, iss, aud, exp, …) plus email_verified=false — and nothing on screen says why. Encrypted delivery is for apps that read values through userinfo and decrypt them with the app key — that is scenario 3.',
-  claimConfig: 'Leave both boxes unticked and the “Stay-connected field” on “Not linkable” for the documented run. They DO apply here — scope=openid profile email resolves to exactly the name and email claims this block configures — so ticking “Required” on Email makes the consent screen refuse a decline, and “Verified only” additionally demands a verified email field. The stay-connected binding needs Encrypted delivery AND a service; this app has neither.'
+  claimsDelivery: 'Choose “Plaintext” for the documented run. This is the one setting that decides whether the id_token shows anything: a standards-only OIDC relying party — which is exactly what this scenario demonstrates — reads its claims out of the id_token, and only plaintext delivery puts readable values there. Left on “Encrypted” the login still succeeds, but the id_token carries no email and no name — only the standard identity claims (sub, iss, aud, exp, …) plus email_verified=false — and the suite reads and decrypts what it can through userinfo instead, using the OAuth app private key below (the same route scenario 3 uses). “Encrypted” is also the ONLY choice once this app carries a custom claim in the block below (see claimConfig) — a company-declared claim can never reach an id_token, so a Plaintext app that declares one refuses every OIDC login outright rather than dropping the claim silently.',
+  claimConfig: 'Leave both boxes unticked and the “Stay-connected field” on “Not linkable” for the documented run — scope=openid profile email resolves to exactly the name and email claims this block configures, so ticking “Required” on Email makes the consent screen refuse a decline, and “Verified only” additionally demands a verified email field. Adding a THIRD, custom claim here (any name beyond the standard email/name presets) is realistic — it is how a company asks for something the standard scopes cannot — but it forces claimsDelivery to Encrypted: the id_token composer never emits a custom claim name, so a Plaintext app carrying one refuses every login at the authorize step rather than silently dropping it, and the private key fields below become required to see the value at all. The stay-connected binding needs Encrypted delivery AND a service; this app has neither.'
 };
 
 // ── company-data family ────────────────────────────────────────────────────────
@@ -250,7 +250,7 @@ const SERVICE_OVERVIEW_SETTINGS = {
   connectPerson: 'Use it only where the scenario needs the demo person ALREADY connected to this service — the company-data and flow scenarios do; scenario 4 connects the person itself through the consent screen, and scenario 8 needs an enrollment rather than a connection. Type the person’s own 6-character share code and press Send; they accept in the allme app. The other direction works too: the person opens COMPANYCODE/SERVICECODE themselves. Skip it if they are already connected.',
   audience: 'Leave it on “People” (the default). “Businesses” makes the service refuse person connections outright, so the demo person could not connect at all; “Anyone” also works.',
   require2fa: 'Leave it OFF. It adds an extra verification step for the person when they sign in or connect through this service — real, but nothing this example demonstrates.',
-  keypair: 'Press “Private key (.pem)” and keep the file — it is what you pick as “Service private key (PEM)” below, and the SDK decrypts every value with it. Its passphrase is the random string the portal showed ONCE when you created the service (the amber “Save this passphrase now” panel); it is not recoverable, so without it you need a new service. You do not need the public key here.'
+  keypair: 'Press “Private key (.pem)” and keep the file — it is what you pick as “Service private key (PEM)” below, and the SDK decrypts every value with it. Its passphrase is the random string the portal showed ONCE when you created the service (the amber “Save this passphrase now” panel). A copy is kept under your company recovery key if you saved it there when it was shown (Settings › Recovery); otherwise it is gone and you need a new service. You do not need the public key here.'
 };
 
 const SERVICE_CLIENT_SETTINGS = {
@@ -444,7 +444,7 @@ export const SCENARIOS = [
         key: 'oauthKeyPassphrase',
         label: 'Private key passphrase',
         type: 'passphrase',
-        hint: 'Shown ONCE, in the same panel as the client secret, when the app is created — it decrypts the private key above and is not recoverable, so save it then.'
+        hint: 'Shown ONCE, in the same panel as the client secret, when the app is created — it decrypts the private key above. A copy is kept under your company recovery key if you saved it there when it was shown (Settings › Recovery); otherwise it is gone and the app needs a new keypair.'
       },
       ...ADVANCED
     ]
@@ -487,7 +487,7 @@ export const SCENARIOS = [
         key: 'oauthKeyPassphrase',
         label: 'Private key passphrase',
         type: 'passphrase',
-        hint: 'Shown ONCE, in the same panel as the client secret, when the app is created — it decrypts the private key above and is not recoverable, so save it then.'
+        hint: 'Shown ONCE, in the same panel as the client secret, when the app is created — it decrypts the private key above. A copy is kept under your company recovery key if you saved it there when it was shown (Settings › Recovery); otherwise it is gone and the app needs a new keypair.'
       },
       { key: 'clientId', label: 'Service data client id (live values)', type: 'text' },
       { key: 'clientSecret', label: 'Service data client secret', type: 'secret' },
@@ -505,7 +505,7 @@ export const SCENARIOS = [
     id: 5,
     kind: 'runnable',
     title: 'OIDC login',
-    summary: 'Standard OIDC: discovery → PKCE → id_token verified by the pinned third-party OIDC library.',
+    summary: 'Standard OIDC: discovery → PKCE → id_token verified by the pinned third-party OIDC library, plus any claim value the id_token cannot carry, read via userinfo and decrypted with the app key.',
     readmeChapter: 'OIDC login',
     runButton: 'Sign in with OIDC',
     portalSetup: [{ form: 'oauth-app', settings: OIDC_APP_SETTINGS }],
@@ -513,6 +513,18 @@ export const SCENARIOS = [
     fields: [
       { key: 'oauthClientId', label: 'OAuth app client id (OIDC RP)', type: 'text' },
       { key: 'oauthClientSecret', label: 'OAuth app client secret', type: 'secret' },
+      {
+        key: 'oauthPrivateKeyPem',
+        label: 'OAuth app private key (PEM)',
+        type: 'pem',
+        hint: 'Only needed if this app carries a custom claim, or claims delivery is Encrypted: a company-declared claim never reaches the id_token, whatever the delivery mode, so the suite reads it through userinfo instead — the same app-key route scenario 3 uses — and decrypts it here. Not needed for the documented plaintext run with no custom claim. Downloaded with the download button on the app’s row in the OAuth apps list.'
+      },
+      {
+        key: 'oauthKeyPassphrase',
+        label: 'Private key passphrase',
+        type: 'passphrase',
+        hint: 'Shown ONCE, in the same panel as the client secret, when the app is created — it decrypts the private key above. A copy is kept under your company recovery key if you saved it there when it was shown (Settings › Recovery); otherwise it is gone and the app needs a new keypair.'
+      },
       ...ADVANCED
     ]
   },

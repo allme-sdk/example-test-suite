@@ -242,6 +242,44 @@ function DataBody({ result }) {
     );
   }
   if (Array.isArray(result.docs)) return <Docs docs={result.docs} />;
+  // scenario 5 (OIDC login): the id_token's own claims, plus any additional value read via
+  // userinfo. Always rendered — never gated on there being something to show — because "nothing
+  // came back" is itself a fact worth telling apart from an actionable problem.
+  if (result.claims !== undefined && typeof result.claims === 'object' && result.claims !== null) {
+    const { claims, values, values_cipher: cipher, values_gap: gap, attestations, ...rest } = result;
+    const hasValues = values && typeof values === 'object' && Object.keys(values).length > 0;
+    const rejected = Object.entries(attestations || {})
+      .filter(([slug, a]) => a && a.verified === false && !(values && slug in values))
+      .map(([slug]) => slug);
+    return (
+      <div className="space-y-3">
+        <div>
+          <h4 className={ui.h4}>id_token claims</h4>
+          <KeyVal rows={Object.entries(claims)} />
+        </div>
+        <div>
+          <h4 className={ui.h4}>Claim values via userinfo</h4>
+          <p className={ui.faint}>
+            A value the id_token cannot carry is read and decrypted separately, below (an attestation is
+            checked when the claim carries one; its absence means unverified, not rejected). What is shown
+            may be a SUBSET: a claim beyond these may have been declined, left unanswered, or none was
+            requested — the platform never tells a relying party which case applies.
+          </p>
+          {gap && <div className="mt-1 text-sm text-amber-700 dark:text-amber-400">{gap}</div>}
+          {hasValues && <SignInValues values={values} cipher={cipher} />}
+          {rejected.length > 0 && (
+            <div className="mt-1 text-sm text-red-700 dark:text-red-400">
+              Withheld — verification mismatch, so the delivered value was rejected rather than shown: {rejected.join(', ')}.
+            </div>
+          )}
+          {!gap && !hasValues && rejected.length === 0 && (
+            <div className={`mt-1 text-sm ${ui.sub}`}>No claim values came back beyond what is shown above.</div>
+          )}
+        </div>
+        {Object.keys(rest).length > 0 && <KeyVal rows={Object.entries(rest)} />}
+      </div>
+    );
+  }
   if (result.values_cipher !== undefined && typeof result.values === 'object' && result.values !== null) {
     const { values, values_cipher: cipher, ...rest } = result;
     return (
