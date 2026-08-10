@@ -12,7 +12,7 @@ import {
   XCircle
 } from 'lucide-react';
 import * as ui from '../ui.js';
-import { startScenario, enrollScenario, getRun } from '../lib/api.js';
+import { startScenario, enrollScenario, cleanupScenario, getRun } from '../lib/api.js';
 import { qrDataUrl } from '../lib/qr.js';
 
 const DETACHED_CAVEAT =
@@ -483,7 +483,9 @@ export default function RunPanel({ scenario, resumeRunId, canRun, needsSave }) {
       const envelope =
         kind === 'enroll'
           ? await enrollScenario(scenario.id, responseMode)
-          : await startScenario(scenario.id);
+          : kind === 'cleanup'
+            ? await cleanupScenario(scenario.id)
+            : await startScenario(scenario.id);
       applyAction(envelope);
     } catch (e) {
       const msg = e && e.message === 'not_configured'
@@ -512,6 +514,11 @@ export default function RunPanel({ scenario, resumeRunId, canRun, needsSave }) {
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
           {scenario.runButton}
         </button>
+        {scenario.cleanupButton && (
+          <button type="button" className={ui.btn} disabled={busy || !canRun} onClick={() => run('cleanup')}>
+            {scenario.cleanupButton}
+          </button>
+        )}
       </div>
       {!canRun && (
         <div className={ui.faint}>

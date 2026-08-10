@@ -357,9 +357,10 @@ const COMPANYDATA_SCENARIOS = [
     id: 'companydata:documents',
     kind: 'runnable',
     title: 'Create document types',
-    summary: 'Client::createDocument() for the document/contract types you tick below — broadcast JSON/PDF, per-person file, private file, and contracts requiring signature / acceptance. Every box starts ticked, so an untouched run still creates all six.',
+    summary: 'Client::createDocument() for the document/contract types you tick below — broadcast JSON/PDF, per-person file, private file, and contracts requiring signature / acceptance. Every box starts ticked, so an untouched run still creates all six. Documents are additive — nothing deletes a prior run’s — so “Delete created documents” resets the service to a clean state before you run again.',
     readmeChapter: 'Company data — documents',
     runButton: 'Create documents',
+    cleanupButton: 'Delete created documents',
     portalSetup: CD_PORTAL_SETUP,
     prerequisites: [],
     fields: [

@@ -167,6 +167,23 @@ is absent or any other value. `redirect` → `{"type":"redirect","url":…}` (th
 MUST honour both values so the shared frontend's two enroll buttons work
 identically across ports.
 
+### `POST /api/scenarios/{id}/cleanup` *(company-data family, `companydata:documents` only)*
+
+The documents scenario is additive — `createDocument()` mints a new document on every
+run and nothing deletes a prior run's — so a reused account accumulates documents
+across runs. Cleanup resets it: built off the saved config file, same as `/start`
+(`409 {"error":"not_configured"}` if none), it lists the service's documents
+(`Client::listDocuments`) and deletes each (`Client::deleteDocument`), one `calls`
+entry per list page and per delete so a run that fails partway shows exactly what it
+removed. Same `{runId, action}` envelope as `/start` (`action.type` is always
+`"data"`); result `{"deleted": N}`, observable via `GET /api/runs/{runId}` exactly
+like every other data scenario. Any scenario id other than `companydata:documents` →
+`404 {"error":"not_found"}` — this is not a general per-scenario reset (that is
+`/clear`, below).
+
+This optional additive route does not bump `contractVersion`: an older v3 frontend
+does not call it, and a newer v3 frontend reports the backend's `404` if it is absent.
+
 ### `POST /api/scenarios/{id}/clear` · `POST /api/clear`
 
 The backend half of Clear (the frontend clears its own localStorage). Both take
@@ -207,12 +224,9 @@ Two consequences that are part of the contract, not implementation detail:
   like any other; classifying it as "nothing saved" is the same inspection wearing a
   smaller hat, and makes a successful `POST` answer `404` on the next `GET`.
 
-**No `contractVersion` bump: this is additive and OPTIONAL.** Every other contract
-change so far added a family the bundle needed; this adds two endpoints the bundle can
-do without. Bumping would refuse to start every example whose `frontend.lock` still
-pins the previous bundle — the whole suite dark until the pins are re-cut — to buy a
-guarantee worth less than that: against a backend that predates these routes, the
-`404` simply reports "nothing saved yet" and only the two buttons are inert.
+**No `contractVersion` bump: these endpoints are additive and OPTIONAL.** A backend
+that predates them still implements the rest of contract v3; only the corresponding
+Save all / Restore all controls are unavailable.
 
 Restore writes **localStorage only**. Each scenario's config file is still written by
 its own **Save**, which is what derives `oauth_redirect_uri` from the origin the device

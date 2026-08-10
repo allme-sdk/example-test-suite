@@ -77,6 +77,18 @@ export async function getRun(runId) {
   return body;
 }
 
+// POST /api/scenarios/{id}/cleanup -> {runId, action}
+// companydata:documents only: lists the service's documents and deletes each, through
+// the SDK client's list + delete. Credentials come from the saved config file, same as
+// start() (409 not_configured if none saved). Same {runId, action} run/poll envelope as
+// start() — deleting is a real (if quick) SDK round trip per document, not a local reset.
+export async function cleanupScenario(id) {
+  const { ok, status, body } = await request(`/api/scenarios/${id}/cleanup`, jsonPost());
+  if (status === 409) throw new Error('not_configured');
+  if (!ok) throw new Error((body && body.error) || `cleanup failed (${id})`);
+  return body;
+}
+
 // POST /api/scenarios/{id}/clear -> {ok:true}
 // Throws on non-2xx/network failure so the caller never presents a false cleared
 // state while the backend still holds the config file + its PEM (standards §2).
