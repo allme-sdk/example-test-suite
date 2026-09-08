@@ -71,7 +71,10 @@ to a sibling `.runtime/config/{id}.meta.json`. Returns `{ok:true, configPath}`
 (the relative path, for display/inspection). Idempotent (re-save overwrites).
 `oauth_redirect_uri` is derived from THIS request's `Host` header and from
 nothing else; a request carrying no `Host` is refused with
-`400 {error:"no_origin — …"}` and nothing is written (#574).
+`400 {error:"no_origin — …"}` and nothing is written (#574). The scheme comes
+from the first comma-separated value of `X-Forwarded-Proto`, trimmed and
+lowercased: `https` only when that value is exactly `https`; any other value —
+including an absent header — becomes `http`.
 This is the "settings received from the frontend → written to a local config
 file" step; `/start` then runs off it.
 
@@ -94,10 +97,14 @@ its run.
 
 ### `GET /callback` *(identity family only)*
 
-The registered redirect URI — `http://{host}/callback`, where `{host}` is the
-origin the browser actually reached the backend on (`localhost:8091`,
-`127.0.0.1:8091`, `<lan-ip>:8091`, …). The backend derives it from the request's
-own `Host` header and never substitutes a default (#574). Handles BOTH
+The registered redirect URI — `{scheme}://{host}/callback`, where `{host}` is
+the origin the browser actually reached the backend on (`localhost:8091`,
+`127.0.0.1:8091`, `<lan-ip>:8091`, …) and `{scheme}` is what it reached the
+backend on. The backend derives the host from the request's own `Host` header
+and never substitutes a default (#574); it derives the scheme from the first
+comma-separated value of `X-Forwarded-Proto`, trimmed and lowercased — `https`
+only when that value is exactly `https`, `http` for any other value including
+an absent header. Handles BOTH
 delivery shapes: `?code=…&state=…` (complete via the SDK — `completeSignIn` — or
 via the OIDC library for scenario 5) and `?enrolled=true&state=…` (the
 redirect-leg enrollment outcome, #436 — nothing to exchange; the outcome is
