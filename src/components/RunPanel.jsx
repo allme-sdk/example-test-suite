@@ -59,15 +59,15 @@ function AnswerRows({ answers }) {
   );
 }
 
-// Flow family: the result is {status, steps[], answers?, document?} and
+// Flow family: the result is {status, steps[], answers?, documents?} and
 // accumulates across polls. Rendered distinctly from the generic key→value area:
 // a live step log (each type-checked submit, incl. the deliberate reject→accept),
 // a waiting-on-phone banner, then the decrypted answers (each paired with the
-// ciphertext it came from) + document status.
+// ciphertext it came from) + one status line per downloaded output document.
 function FlowResult({ result }) {
   const steps = Array.isArray(result.steps) ? result.steps : [];
   const answers = Array.isArray(result.answers) ? result.answers : null;
-  const doc = result.document || null;
+  const documents = Array.isArray(result.documents) ? result.documents : null;
   return (
     <div className={`${ui.block} space-y-3`}>
       <h4 className={ui.h4}>Flow run</h4>
@@ -103,10 +103,20 @@ function FlowResult({ result }) {
           <AnswerRows answers={answers} />
         </div>
       )}
-      {doc && (
+      {documents && (
         <div className={ui.noteBox}>
-          Document: {doc.status}
-          {doc.downloaded ? ' — downloaded via flowRunDocument()' : ''}
+          {documents.length === 0 ? (
+            'No output documents were produced for the company.'
+          ) : (
+            <ul className="space-y-1">
+              {documents.map((d, i) => (
+                <li key={d.output_key || i}>
+                  Document <code className={ui.code}>{String(d.output_key)}</code>: {d.status}
+                  {d.downloaded ? ' — downloaded via flowRunDocument()' : ''}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
       <RawToggle value={result} />

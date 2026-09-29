@@ -627,7 +627,7 @@ export const SCENARIOS = [
     kind: 'runnable',
     title: 'Run a contract flow',
     summary:
-      'Trigger a contract flow and drive the company party through it: type-checked step filling (one deliberate reject → accept), a person turn on the phone, then the decrypted answers and — for the contract fixture — the signed document.',
+      'Trigger a contract flow and drive the company party through it: type-checked step filling (one deliberate reject → accept), a person turn on the phone, then the decrypted answers and — for the contract fixture — every generated output document.',
     readmeChapter: 'Run a contract flow',
     runButton: 'Trigger the flow run',
     portalSetup: [
@@ -653,7 +653,7 @@ export const SCENARIOS = [
         key: 'servicePrivateKeyPem',
         label: 'Service private key (PEM)',
         type: 'pem',
-        hint: 'The flow answers + document copy are service-key-encrypted; this key decrypts them. Read into localStorage; on Save written under .runtime/config/keys (0600) and referenced by path in the SDK config file.'
+        hint: 'The flow answers + document copies are service-key-encrypted; this key decrypts them. Read into localStorage; on Save written under .runtime/config/keys (0600) and referenced by path in the SDK config file.'
       },
       { key: 'keyPassphrase', label: 'Service key passphrase', type: 'passphrase' },
       { key: 'flowName', label: 'Flow name', type: 'text', hint: 'The name you gave the flow when you created or imported it — the same name the flows list in the portal shows next to it. The backend looks it up via requestFields(), which is the only company-data surface that ever names a flow; it does not come from a URL.' },
@@ -667,7 +667,7 @@ export const SCENARIOS = [
           { value: 'info', label: 'Info-gathering (data only, a person turn)' },
           { value: 'contract', label: 'Contract (document + signature)' }
         ],
-        hint: 'Pick the fixture you imported. The contract fixture also downloads the generated signed document on completion.'
+        hint: 'Pick the fixture you imported. The contract fixture also downloads every generated output document on completion.'
       },
       ...FLOW_ADVANCED
     ]
@@ -687,7 +687,7 @@ export const SCENARIOS_BY_ID = SCENARIOS.reduce((acc, s) => {
 export const FAMILIES = [
   { key: 'identity', title: 'Identity', blurb: 'Sign in with allme, OIDC login, and 2FA — the scenarios a site uses to authenticate a person.' },
   { key: 'company-data', title: 'Company data', blurb: 'The regular company-data surface: read connected people, request fields, the change feed, webhooks and documents.' },
-  { key: 'flow', title: 'Contract flows', blurb: 'Drive a contract flow end to end: trigger, type-check a step, the person’s turn, then the answers and the generated document.' }
+  { key: 'flow', title: 'Contract flows', blurb: 'Drive a contract flow end to end: trigger, type-check a step, the person’s turn, then the answers and the generated documents.' }
 ];
 
 export function familyOf(id) {

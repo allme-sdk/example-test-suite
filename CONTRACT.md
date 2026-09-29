@@ -1,4 +1,4 @@
-# The demo-backend contract (v3)
+# The demo-backend contract (v4)
 
 This is the canonical contract that every allme SDK example implements.
 It is what makes the examples strictly comparable — an example test suite in
@@ -24,7 +24,7 @@ Each family owns a namespace of scenario ids so they stay globally unique:
   `companydata:read` · `companydata:definitions` · `companydata:changes` ·
   `companydata:webhook` · `companydata:documents`.
 
-There is now **one contract version (3) and one frontend release** for all three
+There is now **one contract version (4) and one frontend release** for all three
 families — the earlier per-family versions/pins (v1/v2/v3 with three separate
 `frontend.lock` files per SDK) are retired: each SDK has ONE `frontend.lock`.
 
@@ -381,20 +381,26 @@ endpoints above; the family-specific points:
   on error). Its `result` is the pinned flow shape and **accumulates across ordinary
   polls** (no long-poll): `{status: "running"|"waiting_person"|"completed",
   steps: [{slug, type, submitted, accepted, error?}], answers?: [{slug, value, cipher}],
-  document?: {status, downloaded}}`. Each poll that finds the platform run
+  documents?: [{output_key, status, downloaded}]}`. Each poll that finds the platform run
   `awaiting_company` drives ONE step via `processFlowRun` (the designated `email`
   step is submitted once with a canned invalid value → `ValidationError` →
   `accepted:false` without advancing, then valid on the next poll → `accepted:true`);
   `awaiting_customer` → `status:"waiting_person"` and nothing is touched (the next
   poll after the phone answer resumes automatically); `completed` → the decrypted
-  `answers` (via `flowRunAnswers`) and, for the contract fixture, the `document`
-  (downloaded via `flowRunDocument`) are written. Each answer's `cipher` is the SAME
+  `answers` (via `flowRunAnswers`) and, for the contract fixture, the `documents`
+  are written: a document leaf can produce several named output documents, so the
+  backend reads the output keys off the company participant's `documents` on the
+  completed run and downloads the company's own copy of EACH output via
+  `flowRunDocument(flowRunId, outputKey)` — one entry per output, `status`
+  `"downloaded"` (`downloaded: true`) or `"unavailable"` (`downloaded: false`, the
+  run still completes). Each answer's `cipher` is the SAME
   row's still-encrypted wrapper, read straight off the run's unchanged raw
   (undecrypted) answer list alongside the `flowRunAnswers` result — the pairing is what lets the panel show
   that the cleartext really came from that ciphertext rather than assert it. `calls`
   traces the SDK methods in order — client construction, `identity`, `connection`,
-  `triggerFlowRun`, `flowRun`, `processFlowRun`, `flowRunAnswers`, `flowRunDocument`
-  — in the entry shape described under `GET /api/runs/{runId}` above.
+  `triggerFlowRun`, `flowRun`, `processFlowRun`, `flowRunAnswers`, then one
+  `flowRunDocument` entry per output document (the entry names the output key) — in
+  the entry shape described under `GET /api/runs/{runId}` above.
 - **`GET /callback`** is identity-only — a flow run has no OAuth consent redirect.
 
 ## Company-data family (#483)
@@ -469,7 +475,7 @@ record; Clear removes both plus the pump cache.
 
 ## Contract versioning
 
-The bundle root contains `contract.json` → `{"contractVersion": 3}`; at startup
+The bundle root contains `contract.json` → `{"contractVersion": 4}`; at startup
 the backend compares it against the version it implements and refuses a
 mismatch, printing both versions and the pin-bump pointer. Checksum failure
 refuses the same way. The contract is **cumulative and additive**: a new family

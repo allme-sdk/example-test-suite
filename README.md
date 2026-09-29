@@ -33,7 +33,7 @@ npm run build
 ```
 
 Produces `dist/`, a self-contained static bundle. `dist/contract.json`
-(`{"contractVersion": 3}`) is emitted into the bundle root — the backend reads
+(`{"contractVersion": 4}`) is emitted into the bundle root — the backend reads
 it at startup and refuses a version it does not implement.
 
 `build` is preceded by `npm run check` (the `prebuild` script), so a release
