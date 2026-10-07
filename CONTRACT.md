@@ -178,18 +178,36 @@ identically across ports.
 
 The documents scenario is additive — `createDocument()` mints a new document on every
 run and nothing deletes a prior run's — so a reused account accumulates documents
-across runs. Cleanup resets it: built off the saved config file, same as `/start`
-(`409 {"error":"not_configured"}` if none), it lists the service's documents
-(`Client::listDocuments`) and deletes each (`Client::deleteDocument`), one `calls`
-entry per list page and per delete so a run that fails partway shows exactly what it
-removed. Same `{runId, action}` envelope as `/start` (`action.type` is always
-`"data"`); result `{"deleted": N}`, observable via `GET /api/runs/{runId}` exactly
-like every other data scenario. Any scenario id other than `companydata:documents` →
-`404 {"error":"not_found"}` — this is not a general per-scenario reset (that is
-`/clear`, below).
+across runs. Cleanup removes the documents **this example created**, and nothing else:
+each backend records every document its `companydata:documents` runs create, with the
+saved service (`client_id`) that created it, in that scenario's setup sidecar, which saving
+the setup again preserves. Cleanup works through exactly the entries recorded for the
+currently saved service; entries recorded for another service stay in the record until
+that service is saved again. A document of the service that the example did not create
+is never listed, touched or deleted.
+
+Built off the saved config file, same as `/start` (`409 {"error":"not_configured"}` if
+none), cleanup calls `Client::deleteDocument` for each such entry, one `calls` entry
+per attempt so a run that fails partway shows exactly what it removed:
+
+- **Deleted** — the document is gone; it counts in `deleted`.
+- **Refused as immutable** (`409 documents.contract_immutable`, a contract that carries a
+  signature) — the document is set to status `ended` (`Client::updateDocumentStatus`, one
+  more `calls` entry) and its id is listed in `ended`; cleanup goes on to the next id.
+- **Already gone** (`404 documents.not_found`) — the entry belongs to the saved service, so the document is gone; nothing to do, it counts in neither.
+- **Any other failure** — the run ends `failed` with that error.
+
+Each entry leaves the record as soon as it is dealt with, so a run that fails partway leaves
+only the unprocessed ones for the next cleanup. Same `{runId, action}` envelope as
+`/start` (`action.type` is always `"data"`); result `{"deleted": N, "ended": [<document
+id>, …]}`, observable via `GET /api/runs/{runId}` exactly like every other data scenario.
+Any scenario id other than `companydata:documents` → `404 {"error":"not_found"}` — this is
+not a general per-scenario reset (that is `/clear`, below).
 
 This optional additive route does not bump `contractVersion`: an older v3 frontend
 does not call it, and a newer v3 frontend reports the backend's `404` if it is absent.
+The `ended` member of its result is additive too: a frontend that ignores it keeps working,
+so the contract version stays as it is.
 
 ### `POST /api/scenarios/{id}/clear` · `POST /api/clear`
 

@@ -357,7 +357,7 @@ const COMPANYDATA_SCENARIOS = [
     id: 'companydata:documents',
     kind: 'runnable',
     title: 'Create document types',
-    summary: 'Client::createDocument() for the document/contract types you tick below — broadcast JSON/PDF, per-person file, private file, and contracts requiring signature / acceptance. Every box starts ticked, so an untouched run still creates all six. Documents are additive — nothing deletes a prior run’s — so “Delete created documents” resets the service to a clean state before you run again.',
+    summary: 'Client::createDocument() for the document/contract types you tick below — broadcast JSON/PDF, per-person file, private file, and contracts requiring signature / acceptance. Every box starts ticked, so an untouched run still creates all six. Documents are additive — nothing deletes a prior run’s — so “Delete created documents” removes the documents this example created before you run again. A contract that already carries a signature cannot be deleted; it is set to ended instead.',
     readmeChapter: 'Company data — documents',
     runButton: 'Create documents',
     cleanupButton: 'Delete created documents',
