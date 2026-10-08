@@ -450,9 +450,11 @@ keys are the RENDERED columns, `raw` carries every remaining public `Change`
 field so the Raw view shows them — nothing is dropped from `result`):
 
 - `companydata:read` — `{connections:[{connectionId, personId, displayName,
-  customerType, shareCode, values:[{slug, value, live, at}]}]}` (grouped by
+  customerType, shareCode, values:[{slug, value, live, at, unreadable}]}]}` (grouped by
   connection — the `Connection` object boundary and every customer identifier are
   preserved, so two people who filled the same slug stay distinguishable).
+  `unreadable` is the SDK `Value`'s mark for a value the service key cannot open;
+  its `value` is then `null`.
 - `companydata:definitions` — `{fields:[{slug, label, type, mandatory, one_time}]}`
   (the folded `mandatory` bool, not the raw split flags).
 - `companydata:changes` — `{events:[{event, personId, shareCode?, customerType?,
